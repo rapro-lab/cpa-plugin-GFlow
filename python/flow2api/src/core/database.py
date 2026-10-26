@@ -3,8 +3,10 @@
 import asyncio
 import aiosqlite
 import json
+import os
+import secrets
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 from .config import DEFAULT_YESCAPTCHA_TASK_TYPE, normalize_yescaptcha_task_type
@@ -99,16 +101,22 @@ class Database:
         cursor = await db.execute("SELECT COUNT(*) FROM admin_config")
         count = await cursor.fetchone()
         if count[0] == 0:
+            # Never seed shared default secrets. Empty values are replaced with
+            # random ones (and written to admin-credentials.txt) by
+            # ensure_bootstrap_credentials() right after startup.
             admin_username = "admin"
-            admin_password = "admin"
-            api_key = "han1234"
+            admin_password = ""
+            api_key = ""
             error_ban_threshold = 3
 
             if config_dict:
                 global_config = config_dict.get("global", {})
-                admin_username = global_config.get("admin_username", "admin")
-                admin_password = global_config.get("admin_password", "admin")
-                api_key = global_config.get("api_key", "han1234")
+                admin_username = (
+                    str(global_config.get("admin_username") or "admin").strip()
+                    or "admin"
+                )
+                admin_password = str(global_config.get("admin_password") or "")
+                api_key = str(global_config.get("api_key") or "")
 
                 admin_config = config_dict.get("admin", {})
                 error_ban_threshold = admin_config.get("error_ban_threshold", 3)
@@ -174,8 +182,8 @@ class Database:
 
             await db.execute(
                 """
-                INSERT INTO generation_config (id, image_timeout, video_timeout, max_retries)
-                VALUES (1, ?, ?, ?)
+                INSERT INTO generation_config (id, image_timeout, video_timeout, max_retries, unsafe_retries)
+                VALUES (1, ?, ?, ?, 3)
             """,
                 (image_timeout, video_timeout, max_retries),
             )
@@ -376,10 +384,15 @@ class Database:
         cursor = await db.execute("SELECT COUNT(*) FROM plugin_config")
         count = await cursor.fetchone()
         if count[0] == 0:
-            await db.execute("""
+            # A random connection token keeps the extension update endpoint
+            # fail-closed instead of relying on an empty shared value.
+            await db.execute(
+                """
                 INSERT INTO plugin_config (id, connection_token, auto_enable_on_update)
-                VALUES (1, '', 1)
-            """)
+                VALUES (1, ?, 1)
+            """,
+                (secrets.token_urlsafe(32),),
+            )
 
         # Ensure token_refresh_config has a row
         cursor = await db.execute("SELECT COUNT(*) FROM token_refresh_config")
@@ -529,7 +542,6 @@ class Database:
                     ("protocol_mode", "TEXT DEFAULT 'session'"),  # ST 刷新模式
                     ("google_cookies", "TEXT DEFAULT ''"),  # 协议登录 Google Cookies
                     ("login_account", "TEXT DEFAULT ''"),  # 协议登录账号提示
-                    ("login_password", "TEXT DEFAULT ''"),  # 预留
                     ("proxy_url", "TEXT DEFAULT ''"),  # 协议刷新代理
                     ("auto_refresh_enabled", "BOOLEAN DEFAULT 1"),
                     ("refresh_interval_minutes", "INTEGER DEFAULT 120"),
@@ -548,6 +560,18 @@ class Database:
                             print(f"  ✓ Added column '{col_name}' to tokens table")
                         except Exception as e:
                             print(f"  ✗ Failed to add column '{col_name}': {e}")
+
+                # login_password was write-only (no login path ever read it) and
+                # stored the Google account password in plaintext. Remove it from
+                # databases created by older versions.
+                if await self._column_exists(db, "tokens", "login_password"):
+                    try:
+                        await db.execute("ALTER TABLE tokens DROP COLUMN login_password")
+                        print(
+                            "  ✓ Dropped unused column 'login_password' from tokens table"
+                        )
+                    except Exception as e:
+                        print(f"  ✗ Failed to drop column 'login_password': {e}")
 
             # Check and add missing columns to admin_config table
             if await self._table_exists(db, "admin_config"):
@@ -587,6 +611,7 @@ class Database:
             if await self._table_exists(db, "generation_config"):
                 generation_columns_to_add = [
                     ("max_retries", "INTEGER DEFAULT 3"),
+                    ("unsafe_retries", "INTEGER DEFAULT 3"),
                 ]
 
                 for col_name, col_type in generation_columns_to_add:
@@ -767,7 +792,6 @@ class Database:
                     protocol_mode TEXT DEFAULT 'session',
                     google_cookies TEXT DEFAULT '',
                     login_account TEXT DEFAULT '',
-                    login_password TEXT DEFAULT '',
                     proxy_url TEXT DEFAULT '',
                     auto_refresh_enabled BOOLEAN DEFAULT 1,
                     refresh_interval_minutes INTEGER DEFAULT 120,
@@ -880,6 +904,7 @@ class Database:
                     image_timeout INTEGER DEFAULT 300,
                     video_timeout INTEGER DEFAULT 1500,
                     max_retries INTEGER DEFAULT 3,
+                    unsafe_retries INTEGER DEFAULT 3,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -1128,10 +1153,10 @@ class Database:
                                    credits, user_paygate_tier, current_project_id, current_project_name,
                                    image_enabled, video_enabled, image_concurrency, video_concurrency,
                                    captcha_proxy_url, extension_route_key,
-                                   protocol_mode, google_cookies, login_account, login_password,
+                                   protocol_mode, google_cookies, login_account,
                                    proxy_url, auto_refresh_enabled, refresh_interval_minutes,
                                    last_st_refresh_at, last_st_refresh_result)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     token.st,
@@ -1154,7 +1179,6 @@ class Database:
                     token.protocol_mode,
                     token.google_cookies,
                     token.login_account,
-                    token.login_password,
                     token.proxy_url,
                     token.auto_refresh_enabled,
                     token.refresh_interval_minutes,
@@ -1752,6 +1776,7 @@ class Database:
         image_timeout: Optional[int] = None,
         video_timeout: Optional[int] = None,
         max_retries: Optional[int] = None,
+        unsafe_retries: Optional[int] = None,
     ):
         """Update generation configuration"""
         async with self._connect(write=True) as db:
@@ -1778,30 +1803,40 @@ class Database:
                 )
             except Exception:
                 normalized_max_retries = 3
+            try:
+                normalized_unsafe_retries = (
+                    max(0, min(10, int(unsafe_retries)))
+                    if unsafe_retries is not None
+                    else max(0, min(10, int(current.get("unsafe_retries", 3))))
+                )
+            except Exception:
+                normalized_unsafe_retries = 3
 
             if row:
                 await db.execute(
                     """
                     UPDATE generation_config
-                    SET image_timeout = ?, video_timeout = ?, max_retries = ?, updated_at = CURRENT_TIMESTAMP
+                    SET image_timeout = ?, video_timeout = ?, max_retries = ?, unsafe_retries = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = 1
                 """,
                     (
                         normalized_image_timeout,
                         normalized_video_timeout,
                         normalized_max_retries,
+                        normalized_unsafe_retries,
                     ),
                 )
             else:
                 await db.execute(
                     """
-                    INSERT INTO generation_config (id, image_timeout, video_timeout, max_retries)
-                    VALUES (1, ?, ?, ?)
+                    INSERT INTO generation_config (id, image_timeout, video_timeout, max_retries, unsafe_retries)
+                    VALUES (1, ?, ?, ?, ?)
                 """,
                     (
                         normalized_image_timeout,
                         normalized_video_timeout,
                         normalized_max_retries,
+                        normalized_unsafe_retries,
                     ),
                 )
             await db.commit()
@@ -2043,6 +2078,157 @@ class Database:
 
             await db.commit()
 
+    # Values that used to be committed to the repository or shipped as shared
+    # defaults. They must never authenticate in a real installation.
+    LEGACY_ADMIN_PASSWORDS = frozenset({"admin", "123456", "password"})
+    LEGACY_API_KEYS = frozenset({"han1234", "admin", "changeme"})
+    CREDENTIALS_FILENAME = "admin-credentials.txt"
+
+    async def ensure_bootstrap_credentials(
+        self, data_dir: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Replace missing or shared-default admin secrets with random ones.
+
+        - Empty or legacy-default admin password -> random password (bcrypt hash stored)
+        - Custom plaintext password -> hashed in place, value preserved
+        - Empty or legacy-default API key -> random key
+        - Empty plugin connection token -> random token
+
+        Rotated values are written once to ``<data_dir>/admin-credentials.txt``
+        so the operator can read them; the database only keeps the bcrypt hash
+        of the password. Safe to call on every startup.
+        """
+        from .auth import AuthManager
+
+        result: Dict[str, Any] = {
+            "password_rotated": False,
+            "api_key_rotated": False,
+            "connection_token_generated": False,
+            "credentials_path": None,
+        }
+
+        async with self._connect(write=True) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute("SELECT * FROM admin_config WHERE id = 1")
+            row = await cursor.fetchone()
+            if row is None:
+                return result
+            current = dict(row)
+
+            username = str(current.get("username") or "admin")
+            stored_password = str(current.get("password") or "")
+            stored_api_key = str(current.get("api_key") or "")
+            generated_password: Optional[str] = None
+            new_password = stored_password
+
+            if not stored_password or (
+                not AuthManager.is_password_hashed(stored_password)
+                and stored_password in self.LEGACY_ADMIN_PASSWORDS
+            ):
+                generated_password = secrets.token_urlsafe(18)
+                new_password = AuthManager.hash_password(generated_password)
+                result["password_rotated"] = True
+            elif not AuthManager.is_password_hashed(stored_password):
+                # Custom plaintext password from an older release: keep the
+                # value but stop storing it in clear text.
+                new_password = AuthManager.hash_password(stored_password)
+
+            new_api_key = stored_api_key
+            if not stored_api_key or stored_api_key in self.LEGACY_API_KEYS:
+                new_api_key = secrets.token_urlsafe(32)
+                result["api_key_rotated"] = True
+
+            await db.execute(
+                """
+                UPDATE admin_config
+                SET password = ?, api_key = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = 1
+                """,
+                (new_password, new_api_key),
+            )
+
+            cursor = await db.execute(
+                "SELECT connection_token FROM plugin_config WHERE id = 1"
+            )
+            plugin_row = await cursor.fetchone()
+            connection_token = ""
+            if plugin_row is not None:
+                connection_token = str(
+                    dict(plugin_row).get("connection_token") or ""
+                )
+            if not connection_token:
+                connection_token = secrets.token_urlsafe(32)
+                if plugin_row is None:
+                    await db.execute(
+                        """
+                        INSERT INTO plugin_config
+                            (id, connection_token, auto_enable_on_update)
+                        VALUES (1, ?, 1)
+                        """,
+                        (connection_token,),
+                    )
+                else:
+                    await db.execute(
+                        """
+                        UPDATE plugin_config
+                        SET connection_token = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = 1
+                        """,
+                        (connection_token,),
+                    )
+                result["connection_token_generated"] = True
+
+            await db.commit()
+
+        if not (result["password_rotated"] or result["api_key_rotated"]):
+            return result
+
+        target_dir = Path(data_dir) if data_dir else Path(self.db_path).parent
+        target_dir.mkdir(parents=True, exist_ok=True)
+        credentials_path = target_dir / self.CREDENTIALS_FILENAME
+
+        lines = [
+            "GFlow plugin - generated credentials",
+            "",
+            "These values replaced empty or shared default secrets at startup.",
+            "Store them somewhere safe, then delete this file.",
+            "",
+            f"admin_username = {username}",
+            (
+                f"admin_password = {generated_password}"
+                if generated_password is not None
+                else "admin_password = (unchanged; already set by the operator)"
+            ),
+            f"api_key = {new_api_key}",
+            f"connection_token = {connection_token}",
+            "",
+            f"generated_at = {datetime.now(timezone.utc).isoformat()}",
+            "",
+        ]
+
+        try:
+            descriptor = os.open(
+                str(credentials_path),
+                os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                0o600,
+            )
+            with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
+                handle.write("\n".join(lines))
+            try:
+                os.chmod(credentials_path, 0o600)
+            except OSError:
+                pass
+        except OSError as exc:
+            print(f"  ✗ Could not write {credentials_path}: {exc}")
+            return result
+
+        result["credentials_path"] = str(credentials_path)
+        print(
+            "  ✓ Generated new admin credentials. Read them once from "
+            f"{credentials_path} and delete the file afterwards."
+        )
+        return result
+
     async def reload_config_to_memory(self):
         """
         Reload all configuration from database to in-memory Config instance.
@@ -2076,6 +2262,9 @@ class Database:
             config.set_image_timeout(generation_config.image_timeout)
             config.set_video_timeout(generation_config.video_timeout)
             config.set_flow_max_retries(generation_config.max_retries)
+            config.set_unsafe_generation_retries(
+                getattr(generation_config, "unsafe_retries", 3)
+            )
 
         # Reload call logic config
         call_logic_config = await self.get_call_logic_config()

@@ -1,23 +1,23 @@
-// common.js - GFlow 登录助手通用工具函数
+// common.js - GFlow Login Assistant shared helpers
 const GFLOW_SYNC_PATH = '/v0/management/plugins/gflow/api/extension-sync';
 
 function validateConnection(value) {
   if (!value || value.product !== 'GFlow') {
-    throw new Error('请粘贴从 GFlow 添加账号窗口复制的配置');
+    throw new Error('Paste the config copied from the Add account window in GFlow');
   }
   let url;
   try {
     url = new URL(value.apiUrl);
   } catch (_) {
-    throw new Error('GFlow 连接地址无效');
+    throw new Error('Invalid GFlow connection URL');
   }
   if (!['127.0.0.1', 'localhost'].includes(url.hostname) || !['http:', 'https:'].includes(url.protocol)
       || url.username || url.password || url.search || url.hash || url.pathname !== GFLOW_SYNC_PATH) {
-    throw new Error('扩展仅连接本机 GFlow；请重新复制配置');
+    throw new Error('The extension only connects to the local GFlow; copy the config again');
   }
   const connectionToken = String(value.connectionToken || '').trim();
   if (!connectionToken || connectionToken.length > 512 || /[\x00-\x1f\x7f]/.test(connectionToken)) {
-    throw new Error('连接凭据无效，请重新复制 GFlow 扩展配置');
+    throw new Error('Invalid connection credential. Copy the GFlow extension config again.');
   }
   return { product: 'GFlow', apiUrl: url.href, connectionToken };
 }
@@ -25,7 +25,7 @@ function validateConnection(value) {
 function validateEmail(value) {
   const email = String(value || '').trim().toLowerCase();
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error('请填写当前 Google 账号邮箱');
+    throw new Error('Enter the current Google account email');
   }
   return email;
 }
@@ -94,7 +94,7 @@ function serializeFlowCookies(cookies) {
   const names = new Set(selected.map(cookie => cookie.name));
   if (!['OSID', '__Secure-OSID'].some(name => names.has(name))
       || !['SID', 'HSID', 'SSID', 'APISID', 'SAPISID', '__Secure-1PSID', '__Secure-3PSID'].some(name => names.has(name))) {
-    throw new Error('未找到完整 Flow 登录态，请先在本浏览器登录 flow.google.com，再重试');
+    throw new Error('Full Flow session not found. Sign in to flow.google.com in this browser, then retry.');
   }
   return serializeCookieStorage(selected);
 }

@@ -1,4 +1,4 @@
-// popup.js - GFlow 登录助手配置界面交互
+// popup.js - GFlow Login Assistant config UI
 let paired = false;
 let savedApiUrl = '';
 
@@ -20,12 +20,12 @@ function busy(val) {
 async function sendMsg(action, config) {
   const resp = await chrome.runtime.sendMessage({ action, config });
   if (resp?.ok !== true) {
-    throw new Error(resp?.message || resp?.error || '无法与 GFlow 扩展后台建立通信');
+    throw new Error(resp?.message || resp?.error || 'Cannot reach the GFlow extension background');
   }
   const result = resp.result ?? resp;
-  // ok 表示消息送达；只有 success === true 才能表示业务同步成功。
+  // ok means the message was delivered; only success === true means the sync itself succeeded.
   if (action === 'sync' && result?.success !== true) {
-    throw new Error(result?.message || 'GFlow 同步失败，请查看同步日志');
+    throw new Error(result?.message || 'GFlow sync failed. Check the sync log.');
   }
   return result;
 }
@@ -50,7 +50,7 @@ function renderState(state) {
   paired = state.configured === true;
   savedApiUrl = state.apiUrl || '';
   field('connectionToken').required = !paired;
-  field('connectionToken').placeholder = paired ? '已保存；留空沿用，无需再次填写' : '粘贴配置后自动填入';
+  field('connectionToken').placeholder = paired ? 'Saved; leave blank to keep the current one' : 'Filled in automatically after pasting the config';
   const isPaired = paired;
   if (state.apiUrl) field('apiUrl').value = state.apiUrl;
   if (state.loginAccount) field('email').value = state.loginAccount;
@@ -60,11 +60,11 @@ function renderState(state) {
     const d = new Date(state.lastSync.timestamp);
     const succeeded = state.lastSync.success === true;
     const timeStr = Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString();
-    showStatus(`${succeeded ? '同步成功' : '同步失败'} (${timeStr})\n${state.lastSync.message || ''}`, succeeded ? 'success' : 'error');
+    showStatus(`${succeeded ? 'Sync succeeded' : 'Sync failed'} (${timeStr})\n${state.lastSync.message || ''}`, succeeded ? 'success' : 'error');
   } else if (isPaired) {
-    showStatus('已配置本机连接，登录 Flow 后点击“保存并立即同步”。', 'info');
+    showStatus('Local connection configured. Sign in to Flow, then click "Save and sync now".', 'info');
   } else {
-    showStatus('请从 GFlow 页面点击“复制扩展配置”，粘贴到此处即可。', 'info');
+    showStatus('On the GFlow page click "Copy extension config" and paste it here.', 'info');
   }
 }
 
@@ -77,9 +77,9 @@ async function saveFromForm() {
   if (connectionToken) {
     connection = validateConnection({ product: 'GFlow', apiUrl, connectionToken });
     const granted = await chrome.permissions.request({ origins: [connectionPermission(connection.apiUrl)] });
-    if (!granted) throw new Error('需要授权扩展连接本机 GFlow');
+    if (!granted) throw new Error('The extension needs permission to connect to the local GFlow');
   } else if (!paired || apiUrl !== savedApiUrl) {
-    throw new Error('请从 GFlow 复制扩展配置并粘贴到快捷导入框');
+    throw new Error('Copy the extension config from GFlow and paste it into the quick import box');
   }
   const state = await sendMsg('save', { connection, loginAccount, autoSync });
   renderState(state);
@@ -94,40 +94,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     showStatus(err.message, 'error');
   }
 
-  // 快捷识别
+  // Quick import
   field('quickFillBtn').addEventListener('click', () => {
     const val = field('quickPaste').value.trim();
-    if (!val) return showStatus('请先粘贴配置文本', 'error');
+    if (!val) return showStatus('Paste the config text first', 'error');
     if (parseAndFillConfig(val)) {
       field('quickPaste').value = '';
-      showStatus('配置已自动填入，请核对邮箱后点击“保存并立即同步”。', 'success');
+      showStatus('Config filled in. Check the email, then click "Save and sync now".', 'success');
     } else {
-      showStatus('未能解析配置 JSON，请确认是从 GFlow 页面点击【复制扩展配置】所得。', 'error');
+      showStatus('Could not parse the config JSON. Make sure it came from "Copy extension config" on the GFlow page.', 'error');
     }
   });
 
-  // 快捷框直接输入自动填入
+  // Auto-fill while typing in the quick box
   field('quickPaste').addEventListener('input', () => {
     const val = field('quickPaste').value.trim();
     if (val.startsWith('{') && val.endsWith('}')) {
       if (parseAndFillConfig(val)) {
         field('quickPaste').value = '';
-        showStatus('已自动识别并填充配置！', 'success');
+        showStatus('Config detected and filled in.', 'success');
       }
     }
   });
 
-  // 提交并同步
+  // Save and sync
   field('setup').addEventListener('submit', async (e) => {
     e.preventDefault();
     busy(true);
-    showStatus('正在连接 GFlow 后台并同步登录态...', 'info');
+    showStatus('Connecting to the GFlow backend and syncing the session...', 'info');
     try {
       await saveFromForm();
 
-      showStatus('正在同步登录态…', 'info');
+      showStatus('Syncing the session…', 'info');
       const syncResult = await sendMsg('sync');
-      showStatus(`同步成功：${syncResult.message || ''}`, 'success');
+      showStatus(`Sync succeeded: ${syncResult.message || ''}`, 'success');
     } catch (err) {
       showStatus(err.message, 'error');
     } finally {
@@ -135,12 +135,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // 仅保存
+  // Save only
   field('saveOnlyBtn').addEventListener('click', async () => {
     busy(true);
     try {
       await saveFromForm();
-      showStatus('配置已保存成功。', 'success');
+      showStatus('Config saved.', 'success');
     } catch (err) {
       showStatus(err.message, 'error');
     } finally {
@@ -148,21 +148,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // 日志页面
+  // Log page
   field('logsBtn').addEventListener('click', () => {
     window.location.href = 'logs.html';
   });
 
-  // 清除配置
+  // Clear config
   field('forgetBtn').addEventListener('click', async () => {
-    if (!confirm('确定要清除本机的 GFlow 扩展连接配置吗？')) return;
+    if (!confirm('Clear the GFlow extension connection config on this machine?')) return;
     try {
       const state = await sendMsg('forget');
       renderState(state);
       field('connectionToken').value = '';
       field('apiUrl').value = '';
       field('email').value = '';
-      showStatus('配置已清除。', 'info');
+      showStatus('Config cleared.', 'info');
     } catch (err) {
       showStatus(err.message, 'error');
     }

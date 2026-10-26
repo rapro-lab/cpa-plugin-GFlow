@@ -48,7 +48,6 @@ class Token(BaseModel):
     protocol_mode: str = "session"  # session/protocol
     google_cookies: str = ""
     login_account: str = ""
-    login_password: str = ""
     proxy_url: str = ""
     auto_refresh_enabled: bool = True
     refresh_interval_minutes: int = 120
@@ -151,6 +150,7 @@ class GenerationConfig(BaseModel):
     image_timeout: int = 300  # seconds
     video_timeout: int = 1500  # seconds
     max_retries: int = 3  # 请求最大重试次数
+    unsafe_retries: int = 3  # content-filter retry budget
 
 
 class CallLogicConfig(BaseModel):

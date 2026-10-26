@@ -76,6 +76,11 @@ BROWSER_ENVIRONMENT_PATCH_MARKER = "__flow2apiBrowserEnvironmentPatchInstalled__
 # ==================== playwright 自动安装 ====================
 def _run_pip_install(package: str, use_mirror: bool = False) -> bool:
     """运行 pip install 命令"""
+    if getattr(sys, "frozen", False):
+        debug_logger.log_warning(
+            "[BrowserCaptcha] 打包运行时无法执行 pip install，跳过自动安装"
+        )
+        return False
     cmd = [sys.executable, "-m", "pip", "install", package]
     if use_mirror:
         cmd.extend(["-i", "https://pypi.tuna.tsinghua.edu.cn/simple"])
@@ -105,6 +110,11 @@ def _run_pip_install(package: str, use_mirror: bool = False) -> bool:
 
 def _run_playwright_install(use_mirror: bool = False) -> bool:
     """安装 playwright chromium 浏览器"""
+    if getattr(sys, "frozen", False):
+        debug_logger.log_warning(
+            "[BrowserCaptcha] 打包运行时无法执行 playwright install，跳过自动安装"
+        )
+        return False
     cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
     env = os.environ.copy()
     
@@ -182,29 +192,56 @@ def _ensure_playwright_installed() -> bool:
     return False
 
 
+def _resolve_installed_chromium() -> str:
+    """Locate an installed Chromium without spawning a Python subprocess.
+
+    The packed worker is a PyInstaller binary: ``sys.executable -c`` starts a
+    second copy of the worker instead of running Python code, so the previous
+    detection always timed out. Resolve the path in-process instead.
+    """
+    env_path = os.environ.get("BROWSER_EXECUTABLE_PATH", "").strip()
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    # Filesystem scan first: no side effects, safe while an event loop is
+    # active (this module is imported from inside the worker's event loop).
+    roots = []
+    configured = os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "").strip()
+    if configured and configured != "0":
+        roots.append(configured)
+    local_appdata = os.environ.get("LOCALAPPDATA", "")
+    if local_appdata:
+        roots.append(os.path.join(local_appdata, "ms-playwright"))
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for name in sorted(os.listdir(root), reverse=True):
+            if not name.startswith("chromium-"):
+                continue
+            for rel in ("chrome-win64/chrome.exe", "chrome-win/chrome.exe", "chrome-linux/chrome"):
+                candidate = os.path.join(root, name, *rel.split("/"))
+                if os.path.exists(candidate):
+                    return candidate
+
+    try:
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            candidate = p.chromium.executable_path or ""
+        if candidate and os.path.exists(candidate):
+            return candidate
+    except Exception as e:
+        debug_logger.log_info(
+            f"[BrowserCaptcha] in-process chromium detection unavailable: {e}"
+        )
+    return ""
+
+
 def _ensure_browser_installed() -> bool:
     """确保 chromium 浏览器已安装"""
     try:
-        detect_script = (
-            "from playwright.sync_api import sync_playwright\n"
-            "with sync_playwright() as p:\n"
-            "    print(p.chromium.executable_path or '')\n"
-        )
-        env = os.environ.copy()
-        env.setdefault(
-            "PLAYWRIGHT_BROWSERS_PATH",
-            os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "0") or "0",
-        )
-        result = subprocess.run(
-            [sys.executable, "-c", detect_script],
-            capture_output=True,
-            text=True,
-            timeout=60,
-            env=env,
-        )
-        browser_path = (result.stdout or "").strip().splitlines()
-        browser_path = browser_path[-1].strip() if browser_path else ""
-        if result.returncode == 0 and browser_path and os.path.exists(browser_path):
+        browser_path = _resolve_installed_chromium()
+        if browser_path:
             debug_logger.log_info(
                 f"[BrowserCaptcha] chromium 浏览器已安装: {browser_path}"
             )
@@ -214,7 +251,18 @@ def _ensure_browser_installed() -> bool:
             return True
     except Exception as e:
         debug_logger.log_info(f"[BrowserCaptcha] 检测浏览器时出错: {e}")
-    
+
+    if getattr(sys, "frozen", False):
+        debug_logger.log_error(
+            "[BrowserCaptcha] chromium 浏览器未找到，打包运行时无法自动安装。"
+            "请设置 BROWSER_EXECUTABLE_PATH 指向 chrome.exe"
+        )
+        fail_runtime_prepare(
+            "browser",
+            "[BrowserCaptcha] 未找到 chromium，请设置 BROWSER_EXECUTABLE_PATH",
+        )
+        return False
+
     debug_logger.log_info("[BrowserCaptcha] chromium 浏览器未安装，开始自动安装...")
     progress_runtime_prepare(
         "browser", "[BrowserCaptcha] chromium 浏览器未安装，开始自动安装..."
@@ -1565,7 +1613,9 @@ class TokenBrowser:
             await self._cleanup_stale_slot_process()
         playwright = await async_playwright().start()
         browser_executable_path = (
-            os.environ.get("BROWSER_EXECUTABLE_PATH", "").strip() or None
+            os.environ.get("BROWSER_EXECUTABLE_PATH", "").strip()
+            or _resolve_installed_chromium()
+            or None
         )
         proxy_option, raw_proxy_url, _ = await self._resolve_proxy_runtime_config(
             token_proxy_url=token_proxy_url

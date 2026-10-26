@@ -1,7 +1,10 @@
 [global]
-api_key = "han1234"
+# Do not commit real secrets here. When these are empty (or still at a legacy
+# shared default) the plugin generates random values on first boot and writes
+# them once to <data_dir>/admin-credentials.txt, next to flow.db.
+api_key = ""
 admin_username = "admin"
-admin_password = "admin"
+admin_password = ""
 
 [flow]
 labs_base_url = "https://flow.google.com"

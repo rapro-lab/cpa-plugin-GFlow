@@ -51,9 +51,17 @@ db: Database = None
 concurrency_manager: Optional[ConcurrencyManager] = None
 captcha_runtime_prepare_tasks: Dict[str, asyncio.Task] = {}
 
-# Store active admin session tokens (in production, use Redis or database)
-active_admin_tokens = set()
+# Active admin session tokens: token -> expiry (epoch seconds). Sessions now
+# expire instead of living until the process restarts.
+active_admin_tokens: Dict[str, float] = {}
 ADMIN_SESSION_COOKIE_NAME = "admin_session"
+ADMIN_SESSION_TTL_SECONDS = 12 * 60 * 60
+
+# Login throttling: at most LOGIN_MAX_FAILURES failed attempts per client and
+# account inside LOGIN_WINDOW_SECONDS.
+LOGIN_MAX_FAILURES = 5
+LOGIN_WINDOW_SECONDS = 15 * 60
+_login_failures: Dict[str, List[float]] = {}
 SUPPORTED_API_CAPTCHA_METHODS = {
     "yescaptcha",
     "captcharun",
@@ -686,7 +694,6 @@ class AddTokenRequest(BaseModel):
     protocol_mode: Literal["protocol"] = "protocol"
     google_cookies: str = Field(min_length=1, max_length=524288)
     login_account: str = Field(min_length=3, max_length=254)
-    login_password: Optional[str] = None
     proxy_url: Optional[str] = None
     auto_refresh_enabled: bool = True
     refresh_interval_minutes: int = 120
@@ -714,7 +721,6 @@ class UpdateTokenRequest(BaseModel):
     protocol_mode: Optional[Literal["protocol"]] = None
     google_cookies: Optional[str] = Field(default=None, max_length=524288)
     login_account: Optional[str] = None
-    login_password: Optional[str] = None
     proxy_url: Optional[str] = None
     auto_refresh_enabled: Optional[bool] = None
     refresh_interval_minutes: Optional[int] = None
@@ -856,6 +862,66 @@ class PluginTokenUpdateRequest(BaseModel):
 # ========== Auth Middleware ==========
 
 
+def _purge_expired_admin_tokens(now: Optional[float] = None) -> None:
+    """Drop session tokens whose TTL has elapsed."""
+    reference = time.time() if now is None else now
+    expired = [
+        token for token, expiry in active_admin_tokens.items() if expiry <= reference
+    ]
+    for token in expired:
+        active_admin_tokens.pop(token, None)
+
+
+def _register_admin_session(token: str) -> None:
+    _purge_expired_admin_tokens()
+    active_admin_tokens[token] = time.time() + ADMIN_SESSION_TTL_SECONDS
+
+
+def _admin_session_is_active(token: str) -> bool:
+    expiry = active_admin_tokens.get(token)
+    if expiry is None:
+        return False
+    if expiry <= time.time():
+        active_admin_tokens.pop(token, None)
+        return False
+    return True
+
+
+def _login_attempt_key(http_request: Request, username: str) -> str:
+    client_host = ""
+    if http_request.client is not None:
+        client_host = str(http_request.client.host or "")
+    return f"{client_host}|{str(username or '').strip().lower()}"
+
+
+def _enforce_login_rate_limit(key: str) -> None:
+    now = time.monotonic()
+    attempts = [
+        stamp
+        for stamp in _login_failures.get(key, [])
+        if now - stamp < LOGIN_WINDOW_SECONDS
+    ]
+    if attempts:
+        _login_failures[key] = attempts
+    else:
+        _login_failures.pop(key, None)
+    if len(attempts) >= LOGIN_MAX_FAILURES:
+        retry_after = max(1, int(LOGIN_WINDOW_SECONDS - (now - attempts[0])))
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed login attempts. Try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+
+def _record_login_failure(key: str) -> None:
+    _login_failures.setdefault(key, []).append(time.monotonic())
+
+
+def _clear_login_failures(key: str) -> None:
+    _login_failures.pop(key, None)
+
+
 async def verify_admin_token(request: Request, authorization: str = Header(None)):
     """Verify admin session token (NOT API key)"""
     header_token = ""
@@ -864,10 +930,10 @@ async def verify_admin_token(request: Request, authorization: str = Header(None)
 
     cookie_token = get_admin_token_from_cookie(request) or ""
 
-    if header_token and header_token in active_admin_tokens:
+    if header_token and _admin_session_is_active(header_token):
         return header_token
 
-    if cookie_token and cookie_token in active_admin_tokens:
+    if cookie_token and _admin_session_is_active(cookie_token):
         return cookie_token
 
     if header_token or cookie_token:
@@ -883,25 +949,39 @@ def get_admin_token_from_cookie(request: Request) -> Optional[str]:
 
 def is_admin_session_token_valid(token: Optional[str]) -> bool:
     normalized = str(token or "").strip()
-    return bool(normalized) and normalized in active_admin_tokens
+    return bool(normalized) and _admin_session_is_active(normalized)
 
 
 # ========== Auth Endpoints ==========
 
 
 @router.post("/api/admin/login")
-async def admin_login(request: LoginRequest, response: Response):
+async def admin_login(
+    payload: LoginRequest, response: Response, http_request: Request
+):
     """Admin login - returns session token (NOT API key)"""
+    attempt_key = _login_attempt_key(http_request, payload.username)
+    _enforce_login_rate_limit(attempt_key)
+
     admin_config = await db.get_admin_config()
 
-    if not AuthManager.verify_admin(request.username, request.password):
+    if not AuthManager.verify_admin(payload.username, payload.password):
+        _record_login_failure(attempt_key)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Generate independent session token
-    session_token = f"admin-{secrets.token_urlsafe(32)}"
+    _clear_login_failures(attempt_key)
 
-    # Store in active tokens
-    active_admin_tokens.add(session_token)
+    # Transparent upgrade: the supplied password is correct, so a legacy
+    # plaintext row can be replaced by a bcrypt hash right now.
+    if admin_config and not AuthManager.is_password_hashed(admin_config.password):
+        await db.update_admin_config(
+            password=AuthManager.hash_password(payload.password)
+        )
+        await db.reload_config_to_memory()
+
+    # Generate independent session token with a bounded lifetime
+    session_token = f"admin-{secrets.token_urlsafe(32)}"
+    _register_admin_session(session_token)
 
     response.set_cookie(
         key=ADMIN_SESSION_COOKIE_NAME,
@@ -910,19 +990,21 @@ async def admin_login(request: LoginRequest, response: Response):
         samesite="lax",
         secure=False,
         path="/",
+        max_age=ADMIN_SESSION_TTL_SECONDS,
     )
 
     return {
         "success": True,
         "token": session_token,  # Session token (NOT API key)
-        "username": admin_config.username,
+        "username": admin_config.username if admin_config else config.admin_username,
+        "expires_in": ADMIN_SESSION_TTL_SECONDS,
     }
 
 
 @router.post("/api/admin/logout")
 async def admin_logout(response: Response, token: str = Depends(verify_admin_token)):
     """Admin logout - invalidate session token"""
-    active_admin_tokens.discard(token)
+    active_admin_tokens.pop(token, None)
     response.delete_cookie(ADMIN_SESSION_COOKIE_NAME, path="/")
     return {"success": True, "message": "退出登录成功"}
 
@@ -938,8 +1020,8 @@ async def change_password(
     if not AuthManager.verify_admin(admin_config.username, request.old_password):
         raise HTTPException(status_code=400, detail="旧密码错误")
 
-    # Update password and username in database
-    update_params = {"password": request.new_password}
+    # Store only the bcrypt hash; the plaintext never touches the database.
+    update_params = {"password": AuthManager.hash_password(request.new_password)}
     if request.username:
         update_params["username"] = request.username
 
@@ -1014,7 +1096,6 @@ async def get_tokens(token: str = Depends(verify_admin_token)):
         "protocol_mode": row.get("protocol_mode") or "session",
         "google_cookies": row.get("google_cookies") or "",
         "login_account": row.get("login_account") or "",
-        "login_password": row.get("login_password") or "",
         "proxy_url": row.get("proxy_url") or "",
         "auto_refresh_enabled": bool(row.get("auto_refresh_enabled", True)),
         "refresh_interval_minutes": row.get("refresh_interval_minutes") or 120,
@@ -1063,7 +1144,6 @@ async def add_token(request: AddTokenRequest, token: str = Depends(verify_admin_
             protocol_mode=request.protocol_mode,
             google_cookies=request.google_cookies,
             login_account=request.login_account,
-            login_password=request.login_password,
             proxy_url=request.proxy_url,
             auto_refresh_enabled=request.auto_refresh_enabled,
             refresh_interval_minutes=request.refresh_interval_minutes,
@@ -1146,7 +1226,6 @@ async def update_token(
             protocol_mode=request.protocol_mode,
             google_cookies=request.google_cookies,
             login_account=request.login_account,
-            login_password=request.login_password,
             proxy_url=request.proxy_url,
             auto_refresh_enabled=request.auto_refresh_enabled,
             refresh_interval_minutes=request.refresh_interval_minutes,

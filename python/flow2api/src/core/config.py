@@ -70,12 +70,12 @@ class Config:
         # If admin_username is set from database, use it; otherwise fall back to config file
         if self._admin_username is not None:
             return self._admin_username
-        return self._config["global"]["admin_username"]
+        return str(self._config.get("global", {}).get("admin_username") or "admin")
 
     @admin_username.setter
     def admin_username(self, value: str):
         self._admin_username = value
-        self._config["global"]["admin_username"] = value
+        self._config.setdefault("global", {})["admin_username"] = value
 
     def set_admin_username_from_db(self, username: str):
         """Set admin username from database"""
@@ -265,23 +265,23 @@ class Config:
     # Mutable properties for runtime updates
     @property
     def api_key(self) -> str:
-        return self._config["global"]["api_key"]
+        return str(self._config.get("global", {}).get("api_key") or "")
 
     @api_key.setter
     def api_key(self, value: str):
-        self._config["global"]["api_key"] = value
+        self._config.setdefault("global", {})["api_key"] = value
 
     @property
     def admin_password(self) -> str:
         # If admin_password is set from database, use it; otherwise fall back to config file
         if self._admin_password is not None:
             return self._admin_password
-        return self._config["global"]["admin_password"]
+        return str(self._config.get("global", {}).get("admin_password") or "")
 
     @admin_password.setter
     def admin_password(self, value: str):
         self._admin_password = value
-        self._config["global"]["admin_password"] = value
+        self._config.setdefault("global", {})["admin_password"] = value
 
     def set_admin_password_from_db(self, password: str):
         """Set admin password from database"""
@@ -483,6 +483,25 @@ class Config:
             return max(1, min(20, int(value)))
         except Exception:
             return 6
+
+    @property
+    def unsafe_generation_retries(self) -> int:
+        """Content-filter retry budget: extra attempts after a Flow safety rejection."""
+        value = self._config.get("generation", {}).get("unsafe_retries", 3)
+        try:
+            return max(0, min(10, int(value)))
+        except Exception:
+            return 3
+
+    def set_unsafe_generation_retries(self, value: int):
+        """Set content-filter retry budget (0 disables retries)."""
+        if "generation" not in self._config:
+            self._config["generation"] = {}
+        try:
+            normalized = max(0, min(10, int(value)))
+        except Exception:
+            normalized = 3
+        self._config["generation"]["unsafe_retries"] = normalized
 
     @property
     def personal_solve_strategy(self) -> str:

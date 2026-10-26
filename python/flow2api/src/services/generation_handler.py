@@ -1245,6 +1245,15 @@ def _apply_current_flow_model_catalog():
                     "max_images": 3,
                     "use_v2_model_config": True,
                     "allow_tier_upgrade": False,
+                    # Flow upscales any finished video to 1080p at no credit
+                    # cost, so the generation result is already 1080p by the
+                    # time it reaches the client. The upsampler model key
+                    # carries the target resolution; the RPC itself is sent
+                    # with the source resolution.
+                    "upsample": {
+                        "resolution": "VIDEO_RESOLUTION_1080P",
+                        "model_key": "veo_3_1_upsampler_1080p",
+                    },
                 },
                 f"Omni 1.1 Flash · {seconds}s · {orientation}",
             )
@@ -1807,21 +1816,41 @@ class GenerationHandler:
                     yield chunk
             else:  # video
                 debug_logger.log_info(f"[GENERATION] 开始视频生成流程...")
-                async for chunk in self._handle_video_generation(
-                    token,
-                    project_id,
-                    model_config,
-                    prompt,
-                    images,
-                    stream,
-                    perf_trace=perf_trace,
-                    generation_result=generation_result,
-                    response_state=response_state,
-                    request_log_state=request_log_state,
-                    pending_token_state=pending_token_state,
-                    video_media_id=video_media_id,
-                ):
-                    yield chunk
+                try:
+                    unsafe_retry_budget = max(
+                        0, min(10, int(config.unsafe_generation_retries))
+                    )
+                except Exception:
+                    unsafe_retry_budget = 3
+                generation_result["_unsafe_retry_total"] = unsafe_retry_budget
+                generation_result["_unsafe_retry_remaining"] = unsafe_retry_budget
+                unsafe_attempt = 0
+                while True:
+                    unsafe_attempt += 1
+                    async for chunk in self._handle_video_generation(
+                        token,
+                        project_id,
+                        model_config,
+                        prompt,
+                        images,
+                        stream,
+                        perf_trace=perf_trace,
+                        generation_result=generation_result,
+                        response_state=response_state,
+                        request_log_state=request_log_state,
+                        pending_token_state=pending_token_state,
+                        video_media_id=video_media_id,
+                    ):
+                        yield chunk
+                    if generation_result.get("success"):
+                        break
+                    if not generation_result.get("_unsafe_retry_pending"):
+                        break
+                    generation_result.pop("_unsafe_retry_pending", None)
+                    generation_result["error_message"] = None
+                    generation_result["error_emitted"] = False
+                    if unsafe_attempt > unsafe_retry_budget + 1:
+                        break
             perf_trace["generation_pipeline_ms"] = int(
                 (time.time() - generation_pipeline_started_at) * 1000
             )
@@ -3229,12 +3258,49 @@ class GenerationHandler:
                     error_info = operation.get("operation", {}).get("error", {})
                     error_code = error_info.get("code", "unknown")
                     error_message = error_info.get("message", "未知错误")
-                    
+
                     # 更新数据库任务状态
                     await self._fail_video_task(
                         checked_operations, f"{error_message} (code: {error_code})"
                     )
-                    
+
+                    # 内容安全过滤是概率性的：同样的输入下一次可能通过。
+                    # 预算未用完时静默重发，不向客户端输出错误。
+                    unsafe_codes = {
+                        "PUBLIC_ERROR_UNSAFE_GENERATION",
+                        "PUBLIC_ERROR_PROMINENT_PEOPLE_FILTER_FAILED",
+                    }
+                    retry_remaining = 0
+                    if isinstance(generation_result, dict):
+                        try:
+                            retry_remaining = int(
+                                generation_result.get("_unsafe_retry_remaining", 0)
+                            )
+                        except Exception:
+                            retry_remaining = 0
+                    if error_code in unsafe_codes and retry_remaining > 0:
+                        generation_result["_unsafe_retry_remaining"] = retry_remaining - 1
+                        generation_result["_unsafe_retry_pending"] = True
+                        generation_result["success"] = False
+                        generation_result["error_message"] = (
+                            f"{error_message} (code: {error_code})"
+                        )
+                        generation_result["error_emitted"] = False
+                        total = generation_result.get("_unsafe_retry_total", retry_remaining)
+                        try:
+                            total = int(total)
+                        except Exception:
+                            total = retry_remaining
+                        attempt_no = max(1, total - retry_remaining + 1)
+                        debug_logger.log_info(
+                            f"[VIDEO] 内容过滤拦截 ({error_code})，重试 {attempt_no}/{total}"
+                        )
+                        if stream:
+                            yield self._create_stream_chunk(
+                                f"Content filter rejected attempt {attempt_no}/{total}; resending the identical request...\n"
+                            )
+                        return
+
                     # 返回友好的错误消息，提示用户重试
                     friendly_error = f"视频生成失败: {error_message}，请重试"
                     self._mark_generation_failed(generation_result, friendly_error)

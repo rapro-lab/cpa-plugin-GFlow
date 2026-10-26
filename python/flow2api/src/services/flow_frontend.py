@@ -396,14 +396,30 @@ class FlowFrontendMixin:
             ]
         elif normalized_mode == "upsample":
             rpc_id = "p0UkFb"
+            # Payload mirrored from the live Flow web UI (captured 2026-10-24,
+            # project a4630d68-..., media 7ab86433-...). Three details differ
+            # from the naive shape and each one makes Flow answer code=[3]:
+            #   * slot 3 is null - the UI never sends a random seed here;
+            #   * slot 4 is the 5-element session metadata (session id at
+            #     index 1), not the 6-element generation metadata;
+            #   * slot 6 is the *source* resolution (720p -> 2, 1080p -> 3);
+            #     the target resolution lives in model_key
+            #     (veo_3_1_upsampler_1080p / _4k).
+            source_resolution = 3 if resolution_value == 4 else 2
             request = [
                 [None, str(video_media_id or "").strip()],
                 None,
                 aspect_value,
-                random.randint(1, 2147483647),
-                metadata,
                 None,
-                resolution_value,
+                [
+                    None,
+                    session_id or str(uuid.uuid4()),
+                    None,
+                    None,
+                    str(uuid.uuid4()).upper(),
+                ],
+                None,
+                source_resolution,
                 output_spec,
             ]
             if model_key:
@@ -428,6 +444,19 @@ class FlowFrontendMixin:
         ]
 
     @classmethod
+    def _is_media_record_id(cls, value: Any) -> bool:
+        """True for a media id, including Flow's ``<uuid>_upsampled`` form.
+
+        An upscaled video is reported as a plain UUID with a ``_upsampled``
+        suffix; the strict UUID check rejected those records and made a
+        successful upscale look like "no generation operations".
+        """
+        text = str(value or "").strip()
+        if text.lower().endswith("_upsampled"):
+            text = text[: -len("_upsampled")]
+        return cls._is_uuid(text)
+
+    @classmethod
     def _extract_frontend_video_records(
         cls,
         payload: Any,
@@ -439,7 +468,7 @@ class FlowFrontendMixin:
             if isinstance(value, list):
                 if (
                     len(value) >= 3
-                    and cls._is_uuid(value[0])
+                    and cls._is_media_record_id(value[0])
                     and (project_id is None or str(value[1] or "") == project_id)
                     and cls._is_uuid(value[2])
                 ):
@@ -475,11 +504,17 @@ class FlowFrontendMixin:
         operations: List[Dict[str, Any]] = []
         for record in records:
             operation_id = str(record[0])
-            media_name = (
-                str(record[2])
-                if len(record) > 2 and cls._is_uuid(record[2])
-                else operation_id
-            )
+            if rpc_id == "p0UkFb":
+                # An upscale record is ["<id>_upsampled", project, conversation];
+                # the new media id is the operation id, while record[2] is the
+                # conversation id and must not be used as the media name.
+                media_name = operation_id
+            else:
+                media_name = (
+                    str(record[2])
+                    if len(record) > 2 and cls._is_uuid(record[2])
+                    else operation_id
+                )
             operations.append(
                 {
                     "operation": {"name": operation_id},

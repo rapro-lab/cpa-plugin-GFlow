@@ -1,4 +1,4 @@
-// logs.js - GFlow 日志查看脚本
+// logs.js - GFlow log viewer script
 let loading = false;
 
 function sendMessage(request) {
@@ -15,8 +15,8 @@ function sendMessage(request) {
 
 function formatTime(isoString) {
   const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return '时间未知';
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  if (Number.isNaN(date.getTime())) return 'Unknown time';
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function renderLogs(logs) {
@@ -24,7 +24,7 @@ function renderLogs(logs) {
   container.replaceChildren();
 
   if (!Array.isArray(logs) || logs.length === 0) {
-    container.innerHTML = '<div class="empty-state">暂无日志记录</div>';
+    container.innerHTML = '<div class="empty-state">No log entries</div>';
     return;
   }
 
@@ -67,19 +67,19 @@ async function loadLogs() {
     const response = await sendMessage({ action: 'getLogs' });
     renderLogs(response?.logs || []);
   } catch (error) {
-    document.getElementById('logsContainer').innerHTML = `<div class="empty-state">读取失败：${error.message}</div>`;
+    document.getElementById('logsContainer').innerHTML = `<div class="empty-state">Failed to read: ${error.message}</div>`;
   } finally {
     loading = false;
   }
 }
 
 async function clearLogs() {
-  if (!confirm('确定要清空日志吗？')) return;
+  if (!confirm('Clear all logs?')) return;
   try {
     await sendMessage({ action: 'clearLogs' });
     await loadLogs();
   } catch (error) {
-    alert('清空失败: ' + error.message);
+    alert('Clear failed: ' + error.message);
   }
 }
 

@@ -16,7 +16,7 @@
     },
     "python/flow2api/src/services/flow_frontend.py": {
       "upstream_path": "src/services/flow_frontend.py",
-      "sha256": "5cd325cafd7c14b571fff7d6c4757f260cf25736a7f465c73de26157ed8f8991"
+      "sha256": "2ba47e8ec0eacd32c4985ec3c7e248bda9b18148acf2645d287ba4c58640ce39"
     },
     "tests/upstream/test_veo_lite_support.py": {
       "upstream_path": "tests/test_veo_lite_support.py",
@@ -24,7 +24,7 @@
     },
     "python/flow2api/src/main.py": {
       "upstream_path": "src/main.py",
-      "sha256": "d6858a53d56603d0f7756a32c5903bca6115af427c51f2b3594e3ac111222a8a"
+      "sha256": "c3b59ec7e34fb0374878bbdc8bbec9192fb20b1c1f8518b092c298f551aec1b6"
     },
     "python/flow2api/src/services/protocol_login.py": {
       "upstream_path": "src/services/protocol_login.py",
@@ -36,7 +36,7 @@
     },
     "python/flow2api/src/api/admin.py": {
       "upstream_path": "src/api/admin.py",
-      "sha256": "d8bd79378de617c7b05625c380860c58a5a5ef11fd6210cbfbc515b51f9b0e8a"
+      "sha256": "1f2e7d44c26b7b77e52e5802707a565311c1bd8d23973a4d853ce94f0708d34c"
     },
     "python/flow2api/src/api/routes.py": {
       "upstream_path": "src/api/routes.py",
@@ -52,7 +52,7 @@
     },
     "python/flow2api/src/core/auth.py": {
       "upstream_path": "src/core/auth.py",
-      "sha256": "81f4734bac910eb7e3dc1d0bf6bff075c11ea9e5918d0d2706eaa15cb7b3ed97"
+      "sha256": "b604e02cd392df7d49c2563fac2b6e3817173bf4e70ee0ab6dae914572857fd3"
     },
     "python/flow2api/src/core/browser_runtime_status.py": {
       "upstream_path": "src/core/browser_runtime_status.py",
@@ -60,11 +60,11 @@
     },
     "python/flow2api/src/core/config.py": {
       "upstream_path": "src/core/config.py",
-      "sha256": "ff6b286774d59bf8d83e7fa9673c638af35162f54b1b2e6d41cd3d6fdce91c1f"
+      "sha256": "cc4fe4a376fce119ca2584780f7e273ef7059836744183bd47096e17b3ead0ad"
     },
     "python/flow2api/src/core/database.py": {
       "upstream_path": "src/core/database.py",
-      "sha256": "81c52bcc57f14f04c5e2b6aa310cd921388727f628c69133b873db1e0f105d3f"
+      "sha256": "d062eb5070fc5925d6c9953e8f01ce4d396f80440d6b494347780f128de13cd4"
     },
     "python/flow2api/src/core/logger.py": {
       "upstream_path": "src/core/logger.py",
@@ -72,7 +72,7 @@
     },
     "python/flow2api/src/core/models.py": {
       "upstream_path": "src/core/models.py",
-      "sha256": "18000d7fbe23939f948a37bce805c3dd69b09cfb7f07a22805111a6a56f5bae6"
+      "sha256": "68d096d9339c7a688b317ba9b24f251e63dd535deac4f27341f51b2c49c35da6"
     },
     "python/flow2api/src/core/monitoring.py": {
       "upstream_path": "src/core/monitoring.py",
@@ -84,7 +84,7 @@
     },
     "python/flow2api/src/services/browser_captcha.py": {
       "upstream_path": "src/services/browser_captcha.py",
-      "sha256": "66da9dbf7172f793b64cd3e76812046121b1d65ed338af7d4dac9453b4f1484a"
+      "sha256": "0652ca0a32c8e637515b354513f2fad0bc4b8f0964cb6d6471836b5baccf94f0"
     },
     "python/flow2api/src/services/browser_captcha_extension.py": {
       "upstream_path": "src/services/browser_captcha_extension.py",
@@ -104,7 +104,7 @@
     },
     "python/flow2api/src/services/generation_handler.py": {
       "upstream_path": "src/services/generation_handler.py",
-      "sha256": "63c8ab014403bb549ed09ea9d3a89d52d452da04fc75f96bdddb06fdac71e291"
+      "sha256": "fb37f6680e7655be5539b7c16de2e0577b97d54374c125efe3b296adfbe02fe3"
     },
     "python/flow2api/src/services/proxy_manager.py": {
       "upstream_path": "src/services/proxy_manager.py",
@@ -141,5 +141,16 @@
       "reason": "Existing verification runtime retained; not changed by this sync"
     }
   ],
-  "runtime_generation_verification": "Not implied by upstream synchronization or mock/cloud tests"
+  "runtime_generation_verification": "Not implied by upstream synchronization or mock/cloud tests",
+  "local_patches": {
+    "python/flow2api/src/services/flow_frontend.py": "Plugin frontend integration retained locally (pre-existing divergence).",
+    "python/flow2api/src/main.py": "Calls ensure_bootstrap_credentials() before reloading config (security hardening).",
+    "python/flow2api/src/api/admin.py": "bcrypt login, login throttling, expiring session tokens, removal of write-only login_password.",
+    "python/flow2api/src/core/auth.py": "Constant-time comparisons, bcrypt password verification, fail-closed empty secrets.",
+    "python/flow2api/src/core/config.py": "unsafe_retries setting and tolerant admin/api secret properties (security hardening).",
+    "python/flow2api/src/core/database.py": "unsafe_retries column, bootstrap secret rotation, login_password column dropped on upgrade.",
+    "python/flow2api/src/core/models.py": "unsafe_retries field; write-only login_password field removed.",
+    "python/flow2api/src/services/browser_captcha.py": "Plugin browser lifetime and diagnostics integration (pre-existing divergence).",
+    "python/flow2api/src/services/generation_handler.py": "Content-filter retry budget (unsafe_retries) (pre-existing divergence)."
+  }
 }

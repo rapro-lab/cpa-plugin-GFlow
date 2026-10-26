@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GFlow 控制台 - EasyCLIProxyAPI</title>
+  <title>GFlow Console - EasyCLIProxyAPI</title>
   <style>
     :root {
       --primary: #0D9488;
@@ -244,53 +244,53 @@
 
   <header class="header">
     <div class="header-title">
-      <h1>GFlow 控制台</h1>
-      <span class="header-badge" id="plugin-version">加载中</span>
-      <span style="font-size:12px; color:var(--text-muted);">CLIProxyAPI 插件</span>
+      <h1>GFlow Console</h1>
+      <span class="header-badge" id="plugin-version">Loading</span>
+      <span style="font-size:12px; color:var(--text-muted);">CLIProxyAPI plugin</span>
     </div>
     <div class="header-actions">
-      <button id="refresh-button" class="btn btn-secondary btn-sm" onclick="refreshManagement()">刷新状态</button>
+      <button id="refresh-button" class="btn btn-secondary btn-sm" onclick="refreshManagement()">Refresh status</button>
     </div>
   </header>
 
-  <p id="connection-status" class="form-desc" role="status" aria-live="polite" style="margin-bottom:16px;">正在自动连接插件管理接口…</p>
+  <p id="connection-status" class="form-desc" role="status" aria-live="polite" style="margin-bottom:16px;">Connecting to the plugin management API…</p>
 
   <nav class="tabs">
-    <button class="tab-btn active" onclick="switchTab('accounts')">账号管理</button>
-    <button class="tab-btn" onclick="switchTab('settings')">配置设置</button>
-    <button class="tab-btn" onclick="switchTab('models')">模型与接口</button>
+    <button class="tab-btn active" onclick="switchTab('accounts')">Account management</button>
+    <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
+    <button class="tab-btn" onclick="switchTab('models')">Models and endpoints</button>
   </nav>
 
   <!-- 1. ACCOUNTS TAB -->
   <main id="tab-accounts">
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-title">总账号数</div>
+        <div class="stat-title">Total accounts</div>
         <div class="stat-value" id="stat-total-tokens">-</div>
-        <div class="stat-desc">已导入的 Google Flow 账号</div>
+        <div class="stat-desc">Imported Google Flow accounts</div>
       </div>
       <div class="stat-card">
-        <div class="stat-title">近期登录校验通过</div>
+        <div class="stat-title">Recent login checks passed</div>
         <div class="stat-value" id="stat-active-tokens">-</div>
-        <div class="stat-desc" id="stat-login-desc">登录校验结果；实际生成另需验证码与额度</div>
+        <div class="stat-desc" id="stat-login-desc">Login check result; generation also requires CAPTCHA and credits</div>
       </div>
       <div class="stat-card">
-        <div class="stat-title">启用账号缓存积分</div>
+        <div class="stat-title">Cached credits for enabled accounts</div>
         <div class="stat-value" id="stat-total-credits">-</div>
-        <div class="stat-desc">最近记录；缓存余额不代表当前可用</div>
+        <div class="stat-desc">Recent record; cached balance may not be currently available</div>
       </div>
       <div class="stat-card">
-        <div class="stat-title">Python 运行环境</div>
-        <div class="stat-value" id="stat-python-ver" style="font-size:16px;">检测中...</div>
+        <div class="stat-title">Python runtime</div>
+        <div class="stat-value" id="stat-python-ver" style="font-size:16px;">Checking...</div>
         <div class="stat-desc" id="stat-python-path" style="overflow-wrap:anywhere;">-</div>
       </div>
     </div>
 
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">账号列表</div>
+        <div class="panel-title">Account list</div>
         <div style="display:flex; gap:8px;">
-          <button class="btn btn-primary" id="add-token-button" onclick="openAddTokenModal()" disabled>+ 添加账号</button>
+          <button class="btn btn-primary" id="add-token-button" onclick="openAddTokenModal()" disabled>+ Add account</button>
         </div>
       </div>
 
@@ -299,16 +299,16 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>账号 (邮箱)</th>
-              <th>积分</th>
-              <th>项目</th>
-              <th>生成开关</th>
-              <th>状态</th>
-              <th>操作</th>
+              <th>Account (Email)</th>
+              <th>Credits</th>
+              <th>Projects</th>
+              <th>Generation switch</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="tokens-tbody">
-            <tr><td colspan="7" class="empty-state"><h3>正在加载账号数据...</h3></td></tr>
+            <tr><td colspan="7" class="empty-state"><h3>Loading account data...</h3></td></tr>
           </tbody>
         </table>
       </div>
@@ -319,62 +319,68 @@
   <main id="tab-settings" style="display:none;">
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">全局与运行配置</div>
+        <div class="panel-title">Global and runtime settings</div>
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="cfg-captcha-method">验证码方式 (Captcha Method)</label>
+        <label class="form-label" for="cfg-captcha-method">CAPTCHA method (Captcha Method)</label>
         <select id="cfg-captcha-method" class="form-select" aria-describedby="captcha-cost-help">
-          <option value="yescaptcha">YesCaptcha（付费 · 需注册 / 充值 / API Key）</option>
-          <option value="capsolver">CapSolver（付费 · 需注册 / 充值 / API Key）</option>
-          <option value="twocaptcha">2Captcha（付费 · 需注册 / 充值 / API Key）</option>
-          <option value="personal">Personal 内置浏览器（本地打码免费 · 需本机 Chrome）</option>
-          <option value="browser">Browser 有头浏览器（本地打码免费 · 需浏览器环境）</option>
+          <option value="yescaptcha">YesCaptcha (paid · registration / top-up / API Key required)</option>
+          <option value="capsolver">CapSolver (paid · registration / top-up / API Key required)</option>
+          <option value="twocaptcha">2Captcha (paid · registration / top-up / API Key required)</option>
+          <option value="personal">Personal built-in browser (free local CAPTCHA solving · local Chrome required)</option>
+          <option value="browser">Browser with visible window (free local CAPTCHA solving · browser environment required)</option>
         </select>
         <div id="captcha-cost-help" class="form-desc">
-          <p><strong>第三方付费打码：</strong>YesCaptcha、CapSolver、2Captcha 均需注册各自平台账号、获取 API Key，并按平台规则充值或购买套餐。注册免费不代表调用免费；若有赠送额度或试用，以平台当前规则为准。</p>
-          <p><strong>Personal：</strong>本地打码免费，无需注册或充值第三方打码平台；需本机 Chrome 及可用的浏览器依赖，可能需要登录 Google。</p>
-          <p><strong>Browser：</strong>本地打码免费，无需第三方打码平台账号或 API Key；需安装浏览器及相关依赖，并提供可显示浏览器窗口的桌面环境。</p>
-          <p><strong>费用范围：</strong>“免费”仅指本地打码免平台服务费；Google Flow 账号、图像 / 视频生成积分、订阅和代理费用另计。本地模式会占用电脑资源，验证能否通过取决于 Google 风控。</p>
-          <p>注册与费用说明：
-            <a href="https://yescaptcha.com/" target="_blank" rel="noopener noreferrer">YesCaptcha 官网</a> ·
-            <a href="https://www.capsolver.com/" target="_blank" rel="noopener noreferrer">CapSolver 官网 / 价格</a> ·
-            <a href="https://2captcha.com/" target="_blank" rel="noopener noreferrer">2Captcha 官网 / 价格</a>
+          <p><strong>Third-party paid CAPTCHA solving:</strong> YesCaptcha, CapSolver and 2Captcha all require an account on each platform, an API key, and top-ups or plans under that platform's rules. A free signup does not mean free usage; if credits or trials are offered, the platform's current rules apply.</p>
+          <p><strong>Personal:</strong> Free local CAPTCHA solving; no third-party registration or top-up required. Local Chrome and browser dependencies are required, and Google sign-in may be needed.</p>
+          <p><strong>Browser:</strong> Free local CAPTCHA solving; no third-party account or API Key required. A browser, dependencies, and a desktop environment that can display its window are required.</p>
+          <p><strong>Cost scope:</strong> "Free" only means local CAPTCHA solving carries no platform service fee. Google Flow accounts, image / video generation credits, subscriptions and proxy costs are billed separately. Local mode uses your machine's resources, and whether a challenge passes depends on Google's risk checks.</p>
+          <p>Registration and pricing:
+            <a href="https://yescaptcha.com/" target="_blank" rel="noopener noreferrer">YesCaptcha website</a> ·
+            <a href="https://www.capsolver.com/" target="_blank" rel="noopener noreferrer">CapSolver website / pricing</a> ·
+            <a href="https://2captcha.com/" target="_blank" rel="noopener noreferrer">2Captcha website / pricing</a>
           </p>
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="cfg-yescaptcha-key">YesCaptcha API 密钥（需注册平台账号，调用按平台规则收费）</label>
-        <input type="password" id="cfg-yescaptcha-key" class="form-input" placeholder="输入客户端密钥" />
+        <label class="form-label" for="cfg-yescaptcha-key">YesCaptcha API key (platform account required; usage billed under platform rules)</label>
+        <input type="password" id="cfg-yescaptcha-key" class="form-input" placeholder="Enter client key" />
       </div>
 
       <div class="form-group">
-        <label class="form-label">网络代理 (HTTP/SOCKS5 Proxy)</label>
+        <label class="form-label">Network proxy (HTTP/SOCKS5 Proxy)</label>
         <div style="display:flex; gap:10px; align-items:center;">
           <label style="display:flex; align-items:center; gap:6px; font-size:13px;">
-            <input type="checkbox" id="cfg-proxy-enabled" /> 启用代理
+            <input type="checkbox" id="cfg-proxy-enabled" /> Enable proxy
           </label>
           <input type="text" id="cfg-proxy-url" class="form-input" placeholder="http://127.0.0.1:7890" style="flex:1;" />
         </div>
-        <div class="form-desc">用于国内网络环境下连接 flow.google.com 及打码服务。</div>
+        <div class="form-desc">For connecting to flow.google.com and CAPTCHA services from mainland China networks.</div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">多账号调度模式</label>
+        <label class="form-label">Multi-account scheduling mode</label>
         <select id="cfg-call-logic" class="form-select">
-          <option value="polling">Round-Robin 顺序轮询</option>
-          <option value="load_aware">负载均衡 (优先最低并发与最足额度)</option>
+          <option value="polling">Round-Robin sequential polling</option>
+          <option value="default">Load balancing (favor lowest concurrency and highest credits)</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label">素材缓存时长 (秒)</label>
+        <label class="form-label">Asset cache duration (seconds)</label>
         <input type="number" id="cfg-cache-timeout" class="form-input" value="7200" />
-        <div class="form-desc">生成后的图片与视频在本地保留的时长。设为 0 表示不自动删除。</div>
+        <div class="form-desc">How long generated images and videos are kept locally. Set to 0 to prevent automatic deletion.</div>
       </div>
 
-      <button class="btn btn-primary" id="save-settings-button" onclick="saveSettings()" disabled>保存配置</button>
+      <div class="form-group">
+        <label class="form-label" for="cfg-unsafe-retries">Content-filter retries</label>
+        <input type="number" id="cfg-unsafe-retries" class="form-input" min="0" max="10" step="1" value="3" />
+        <div class="form-desc">When Flow rejects a video with PUBLIC_ERROR_UNSAFE_GENERATION or PUBLIC_ERROR_PROMINENT_PEOPLE_FILTER_FAILED, the identical request is sent again up to this many times. Rejected attempts are not charged. Set to 0 to disable retries.</div>
+      </div>
+
+      <button class="btn btn-primary" id="save-settings-button" onclick="saveSettings()" disabled>Save settings</button>
     </div>
   </main>
 
@@ -382,51 +388,51 @@
   <main id="tab-models" style="display:none;">
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">支持的模型与接入调用说明</div>
+        <div class="panel-title">Supported models and API usage</div>
       </div>
       <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
-        所有模型均挂载在当前 EasyCLIProxyAPI 内核的同一端口（默认为 <code>8317</code>）。无需额外启动端口，直接向 <code>http://127.0.0.1:8317</code> 发送标准 OpenAI 或 Gemini 请求即可。
+        All models are served on the same port as the current EasyCLIProxyAPI core (default <code>8317</code>). No extra port is needed; send standard requests directly to <code>http://127.0.0.1:8317</code>.
       </p>
 
       <div style="margin-bottom:16px;">
-        <h4 style="font-size:14px; margin-bottom:8px;">OpenAI 兼容文生图调用示例:</h4>
+        <h4 style="font-size:14px; margin-bottom:8px;">OpenAI-compatible text-to-image example:</h4>
         <pre><code>curl -X POST "http://127.0.0.1:8317/v1/chat/completions" \
-  -H "Authorization: Bearer 你的CPA密钥" \
+  -H "Authorization: Bearer your CPA key" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gflow-nano-banana-2.1",
-    "messages": [{"role": "user", "content": "一只可爱的赛博朋克小猫"}],
+    "messages": [{"role": "user", "content": "a cute cyberpunk kitten"}],
     "stream": true
   }'</code></pre>
       </div>
 
       <div style="margin-bottom:16px;">
-        <h4 style="font-size:14px; margin-bottom:8px;">OpenAI 兼容文生视频调用示例 (Veo 3.1):</h4>
+        <h4 style="font-size:14px; margin-bottom:8px;">OpenAI-compatible text-to-video example (Veo 3.1):</h4>
         <pre><code>curl -X POST "http://127.0.0.1:8317/v1/chat/completions" \
-  -H "Authorization: Bearer 你的CPA密钥" \
+  -H "Authorization: Bearer your CPA key" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gflow-veo-3.1-fast",
-    "messages": [{"role": "user", "content": "航拍金色阳光洒在大海微波上"}],
+    "messages": [{"role": "user", "content": "aerial view of golden sunlight glinting on ocean waves"}],
     "stream": true
   }'</code></pre>
       </div>
 
       <div class="panel-header" style="margin-top:24px;">
-        <div class="panel-title">可用模型列表</div>
-        <input type="text" id="model-filter" class="form-input" placeholder="搜索模型..." style="max-width:220px;" oninput="filterModels()" />
+        <div class="panel-title">Available models</div>
+        <input type="text" id="model-filter" class="form-input" placeholder="Search models..." style="max-width:220px;" oninput="filterModels()" />
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>模型标识 (Model ID)</th>
-              <th>类型</th>
-              <th>说明</th>
+              <th>Model ID</th>
+              <th>Type</th>
+              <th>Description</th>
             </tr>
           </thead>
           <tbody id="models-tbody">
-            <tr><td colspan="3" class="empty-state">正在查询模型列表...</td></tr>
+            <tr><td colspan="3" class="empty-state">Loading model list...</td></tr>
           </tbody>
         </table>
       </div>
@@ -437,78 +443,78 @@
   <div id="add-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
       <div class="modal-header">
-        <div class="modal-title">添加 GFlow 账号</div>
+        <div class="modal-title">Add GFlow account</div>
         <button class="btn btn-secondary btn-sm" onclick="closeAddTokenModal()">✕</button>
       </div>
       <section style="padding:14px;border:1px solid var(--border);border-radius:8px;margin-bottom:18px;background:var(--bg);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <strong style="font-size:14px;color:var(--text);">方式一：浏览器助手一键同步（推荐）</strong>
-          <span style="font-size:11px;color:var(--primary);background:var(--primary-soft);padding:2px 8px;border-radius:10px;font-weight:600;">免费扩展</span>
+          <strong style="font-size:14px;color:var(--text);">Method 1: One-click sync with browser assistant (recommended)</strong>
+          <span style="font-size:11px;color:var(--primary);background:var(--primary-soft);padding:2px 8px;border-radius:10px;font-weight:600;">Free extension</span>
         </div>
         <p class="form-desc" style="margin-bottom:8px;">
-          配套扩展 GitHub 开源地址：<a href="https://github.com/daodeqing/cpa-plugin-GFlow/tree/main/browser-extension" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:underline;font-weight:500;">https://github.com/daodeqing/cpa-plugin-GFlow/tree/main/browser-extension</a>
+          Browser extension GitHub source: <a href="https://github.com/daodeqing/cpa-plugin-GFlow/tree/main/browser-extension" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:underline;font-weight:500;">https://github.com/daodeqing/cpa-plugin-GFlow/tree/main/browser-extension</a>
         </p>
         <p style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
-          <button class="btn btn-secondary btn-sm" type="button" onclick="copyExtensionLink(false)">复制下载地址</button>
-          <button class="btn btn-primary btn-sm" type="button" onclick="copyExtensionConfig()">复制扩展配置</button>
-          <button class="btn btn-secondary btn-sm" type="button" onclick="copyExtensionLink(true)">复制 GitHub 源码地址</button>
+          <button class="btn btn-secondary btn-sm" type="button" onclick="copyExtensionLink(false)">Copy download URL</button>
+          <button class="btn btn-primary btn-sm" type="button" onclick="copyExtensionConfig()">Copy extension config</button>
+          <button class="btn btn-secondary btn-sm" type="button" onclick="copyExtensionLink(true)">Copy GitHub source URL</button>
         </p>
         <ol class="form-desc" style="padding-left:20px;line-height:1.8;">
-          <li><b>下载并加载扩展</b>：复制下载地址在浏览器地址栏打开并解压，在 <code>chrome://extensions/</code> 开启“开发者模式”并点击“加载已解压的扩展程序”。</li>
-          <li><b>粘贴配置</b>：点击上方【复制扩展配置】，在扩展弹出页的“快捷导入”中粘贴（自动识别填入接口与凭据），并填入当前 Google 账号邮箱。</li>
-          <li><b>一键同步</b>：在同一浏览器登录 <code>flow.google.com</code>，在扩展中点击【保存并立即同步】，扩展将在后台自动激活会话并提交凭据！</li>
+          <li><b>Download and load the extension</b>: copy the download URL, open it in the browser address bar and unzip it, then in <code>chrome://extensions/</code> enable "Developer mode" and click "Load unpacked".</li>
+          <li><b>Paste config</b>: click "Copy extension config" above, paste it into "Quick import" in the extension popup (the endpoint and credentials are filled in automatically), and enter the current Google account email.</li>
+          <li><b>One-click sync</b>: sign in to <code>flow.google.com</code> in the same browser, then click "Save and sync now" in the extension. It activates the session in the background and submits the credentials.</li>
         </ol>
         <div id="extension-link-panel" hidden style="margin:10px 0;">
-          <label class="form-label" for="extension-public-url" id="extension-link-label">本机安装包下载地址</label>
+          <label class="form-label" for="extension-public-url" id="extension-link-label">Local installer download URL</label>
           <input id="extension-public-url" class="form-input" type="text" readonly onclick="this.select()" style="font-size:12px;" />
           <p id="extension-link-feedback" class="form-desc" role="status" aria-live="polite"></p>
         </div>
         <details class="form-desc" style="line-height:1.8;margin-top:6px;">
-          <summary style="cursor:pointer;color:var(--text-muted);">这是什么？查看详细说明</summary>
-          <p>这是安装在 Chrome / Edge 中的免费浏览器助手，用于自动同步已登录的 Flow 会话 Cookie。不是再次安装 EasyCPA 插件。</p>
-          <p>EasyCPA 内嵌窗口限制直接下载，请把地址粘贴到浏览器地址栏下载。</p>
+          <summary style="cursor:pointer;color:var(--text-muted);">What is this? See the detailed description</summary>
+          <p>This is a free browser assistant installed in Chrome / Edge that automatically syncs the Cookie of an already signed-in Flow session. It does not install the EasyCPA plugin again.</p>
+          <p>The embedded EasyCPA window cannot download directly; paste the URL into a browser address bar to download.</p>
         </details>
-        <p class="form-desc" style="margin-top:6px;font-size:11px;color:var(--text-dim);">配置仅保存在当前 Chrome 扩展本地，请勿将管理凭据分享给他人。</p>
+        <p class="form-desc" style="margin-top:6px;font-size:11px;color:var(--text-dim);">Config is stored only in the current Chrome extension; do not share management credentials.</p>
       </section>
       <div class="form-group">
-        <strong>方式二：手动粘贴</strong>
+        <strong>Method 2: Paste manually</strong>
         <label class="form-label" for="token-cookies" style="margin-top:8px;">Cookie / Session Token</label>
-        <textarea id="token-cookies" class="form-textarea" aria-describedby="cookie-help" placeholder="已有 Cookie 或 Session Token？直接粘贴在这里。"></textarea>
+        <textarea id="token-cookies" class="form-textarea" aria-describedby="cookie-help" placeholder="Have a Cookie or Session Token? Paste it here."></textarea>
         <details id="cookie-help" class="form-desc" style="margin-top:8px;line-height:1.8;">
-          <summary style="cursor:pointer;">如何获取 Cookie / Session Token？</summary>
+          <summary style="cursor:pointer;">How do I get a Cookie / Session Token?</summary>
           <ol style="padding-left:20px;">
-            <li>登录 Google Flow，按 F12 → Network，勾选 Disable cache 后刷新。</li>
-            <li>点击发往当前 Flow 网站的请求，在 Headers → Request Headers 中复制 Cookie 的值，粘贴到上方。</li>
+            <li>Sign in to Google Flow, press F12 → Network, check Disable cache, then refresh.</li>
+            <li>Click a request sent to the current Flow site, then copy the Cookie value from Headers → Request Headers and paste it above.</li>
           </ol>
-          <p>若看到“Provisional headers”，换一条实际已完成的请求。不要复制 Set-Cookie。Application → Cookies 中若存在 <code>__Secure-next-auth.session-token</code>，可只复制它的 Value；找不到就用扩展。</p>
-          <p>支持 Cookie 字符串、Cookie JSON 或 Session Token。登录过期后重新同步，不要分享 Cookie。</p>
+          <p>If you see "Provisional headers", pick a request that actually completed. Do not copy Set-Cookie. If Application → Cookies contains <code>__Secure-next-auth.session-token</code>, copy only its Value; otherwise use the extension.</p>
+          <p>Cookie strings, Cookie JSON, and Session Token are supported. Sync again after the sign-in expires; do not share Cookie.</p>
         </details>
-        <p class="form-desc">只同步你有权使用的账号；添加时会验证登录、查询额度并可能创建项目，不会自动生成。Flow 积分和打码费用另计。</p>
+        <p class="form-desc">Only sync accounts you are entitled to use; adding one validates the login, queries the quota and may create Projects, but never generates automatically. Flow credits and CAPTCHA fees are billed separately.</p>
       </div>
       <details style="margin-bottom:14px;">
-        <summary style="cursor:pointer;color:var(--text-muted);font-size:13px;">高级选项（通常不用填写）</summary>
+        <summary style="cursor:pointer;color:var(--text-muted);font-size:13px;">Advanced options (usually not needed)</summary>
       <div class="form-group">
-        <label class="form-label">项目 UUID (可选)</label>
-        <input type="text" id="token-project-id" class="form-input" placeholder="留空自动创建或拉取" />
+        <label class="form-label">Projects UUID (optional)</label>
+        <input type="text" id="token-project-id" class="form-input" placeholder="Leave blank to create or fetch automatically" />
       </div>
       <div class="form-group">
-        <label class="form-label">备注 (可选)</label>
-        <input type="text" id="token-remark" class="form-input" placeholder="如：测试主号" />
+        <label class="form-label">Note (optional)</label>
+        <input type="text" id="token-remark" class="form-input" placeholder="e.g. test primary account" />
       </div>
       </details>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeAddTokenModal()">取消</button>
-        <button class="btn btn-primary" onclick="submitAddToken()">添加粘贴的账号</button>
+        <button class="btn btn-secondary" onclick="closeAddTokenModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitAddToken()">Add pasted account</button>
       </div>
     </div>
   </div>
 
   <div id="toast" class="toast" style="display:none;"></div>
   <details id="connection-setup" hidden style="margin:24px;">
-    <summary>手动连接管理中心</summary>
-    <p>优先在同一浏览器登录管理中心并记住登录。无法读取该登录时，可临时输入管理密钥；仅保存在当前页面内存中。</p>
-    <input id="connection-key" type="password" autocomplete="off" placeholder="管理中心密钥" class="form-input" />
-    <button class="btn btn-primary" onclick="connectManagement()">连接</button>
+    <summary>Connect to management center manually</summary>
+    <p>First sign in to the management center in the same browser and stay signed in. If that sign-in cannot be read, enter a management key temporarily; it is stored only in this page's memory.</p>
+    <input id="connection-key" type="password" autocomplete="off" placeholder="Management center key" class="form-input" />
+    <button class="btn btn-primary" onclick="connectManagement()">Connect</button>
   </details>
 
   <script>
@@ -537,7 +543,7 @@
       el.style.color = isError ? 'var(--danger)' : 'var(--text-muted)';
     }
 
-    function resetConnection(message = '正在自动连接插件管理接口…', isError = false) {
+    function resetConnection(message = 'Connecting to the plugin management API automatically…', isError = false) {
       connectionGeneration += 1;
       clearInterval(autoRefresh);
       autoRefresh = null;
@@ -549,13 +555,13 @@
       for (const id of ['stat-total-tokens', 'stat-active-tokens', 'stat-total-credits']) {
         document.getElementById(id).textContent = '-';
       }
-      document.getElementById('stat-python-ver').textContent = '连接中 / 待检测';
-      document.getElementById('stat-python-path').textContent = '等待管理中心登录验证。';
-      tableMessage('tokens-tbody', 7, '等待自动连接', message);
+      document.getElementById('stat-python-ver').textContent = 'Connecting / pending';
+      document.getElementById('stat-python-path').textContent = 'Waiting for management center sign-in.';
+      tableMessage('tokens-tbody', 7, 'Waiting for automatic connection', message);
       allModels = [];
-      tableMessage('models-tbody', 3, '等待自动连接', message);
+      tableMessage('models-tbody', 3, 'Waiting for automatic connection', message);
       document.getElementById('cfg-yescaptcha-key').value = '';
-      document.getElementById('plugin-version').textContent = '未连接';
+      document.getElementById('plugin-version').textContent = 'Not connected';
       connectionMessage(message, isError);
     }
 
@@ -590,7 +596,7 @@
       field.value = '';
       resetConnection();
       if (!key || key.length > 512 || /[\x00-\x1f\x7f]/.test(key)) {
-        connectionMessage('请输入有效的管理中心密钥。', true);
+        connectionMessage('Enter a valid management center key.', true);
         return;
       }
       managementKey = key;
@@ -602,7 +608,7 @@
       managementKey = savedManagementKey();
       document.getElementById('connection-setup').hidden = Boolean(managementKey);
       if (!managementKey) {
-        connectionMessage('请先在同一浏览器登录管理中心并记住登录，或展开“手动连接管理中心”。', true);
+        connectionMessage('Sign in to the management center in the same browser and keep the session, or expand "Connect to management center manually".', true);
         return;
       }
       await loadAll();
@@ -615,12 +621,12 @@
 
     async function apiRequest(path, method = 'GET', body = null) {
       if (!managementKey) {
-        const error = new Error('插件尚未连接，请先登录管理中心或使用手动连接。');
+        const error = new Error('The plugin is not connected yet. Sign in to the management center or use manual connection.');
         error.status = 401;
         throw error;
       }
-      // 仅向当前内核的管理路由发送密钥。
-      if (!path.startsWith('/v0/management/plugins/gflow/')) throw new Error('无效的管理接口地址。');
+      // Only send the key to the current core's management routes.
+      if (!path.startsWith('/v0/management/plugins/gflow/')) throw new Error('Invalid management endpoint.');
       const requestKey = managementKey;
       const requestGeneration = connectionGeneration;
       const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + requestKey };
@@ -628,9 +634,9 @@
       const timer = setTimeout(() => controller.abort(), 120000);
       try {
         const resp = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined, signal: controller.signal, cache: 'no-store' });
-        if (requestKey !== managementKey || requestGeneration !== connectionGeneration) throw new Error('连接已变更，请重新加载。');
+        if (requestKey !== managementKey || requestGeneration !== connectionGeneration) throw new Error('The connection changed. Reload the page.');
         if (resp.status === 401 || resp.status === 403) {
-          const message = '管理鉴权失败（HTTP ' + resp.status + '）：请重新登录管理中心或更新临时输入的管理密钥。';
+          const message = 'Management authentication failed (HTTP ' + resp.status + '): sign in to the management center again or update the temporary management key.';
           resetConnection(message, true);
           document.getElementById('connection-setup').hidden = false;
           const error = new Error(message);
@@ -638,10 +644,10 @@
           throw error;
         }
         const data = await resp.json();
-        if (requestKey !== managementKey || requestGeneration !== connectionGeneration) throw new Error('连接已变更，请重新加载。');
+        if (requestKey !== managementKey || requestGeneration !== connectionGeneration) throw new Error('The connection changed. Reload the page.');
         if (!resp.ok) {
-          const message = resp.status === 504 ? '后台响应超时，可刷新状态。已提交的操作可能仍在运行，请勿重复提交。'
-            : (typeof data.error === 'string' ? data.error : (data.error?.message || '管理接口请求失败（HTTP ' + resp.status + '）'));
+          const message = resp.status === 504 ? 'The backend timed out; you can refresh the status. Submitted operations may still be running, so do not submit them again.'
+            : (typeof data.error === 'string' ? data.error : (data.error?.message || 'Management request failed (HTTP ' + resp.status + ')'));
           const error = new Error(message);
           error.status = resp.status;
           throw error;
@@ -649,13 +655,13 @@
         return data;
       } catch (error) {
         if (requestKey !== managementKey || requestGeneration !== connectionGeneration) {
-          const changed = new Error('连接已变更，请重新加载。');
+          const changed = new Error('The connection changed. Reload the page.');
           changed.code = 'connection_changed';
           changed.status = error.status;
           throw changed;
         }
-        if (error.name === 'AbortError') throw new Error('管理接口响应超时，请重试或检查内核运行状态。');
-        if (error instanceof TypeError) throw new Error('无法连接本机内核，请检查 EasyCPA 内核是否正在运行。');
+        if (error.name === 'AbortError') throw new Error('The management API timed out. Retry or check that the core is running.');
+        if (error instanceof TypeError) throw new Error('Cannot reach the local core. Check that the EasyCPA core is running.');
         throw error;
       } finally {
         clearTimeout(timer);
@@ -681,26 +687,26 @@
     async function loadStatus() {
       try {
         const res = await apiRequest('/v0/management/plugins/gflow/api/status');
-        document.getElementById('plugin-version').textContent = res.plugin_version ? 'v' + res.plugin_version : '版本未知';
+        document.getElementById('plugin-version').textContent = res.plugin_version ? 'v' + res.plugin_version : 'unknown version';
         document.getElementById('stat-total-tokens').textContent = res.total_tokens ?? 0;
         document.getElementById('stat-active-tokens').textContent = res.verified_tokens ?? '-';
-        document.getElementById('stat-login-desc').textContent = '已启用 ' + (res.enabled_tokens ?? '-') + ' 个；登录已验证不代表生成成功。';
+        document.getElementById('stat-login-desc').textContent = 'Enabled: ' + (res.enabled_tokens ?? '-') + '; a verified login does not mean generation succeeds.';
         document.getElementById('stat-total-credits').textContent = (res.cached_credits ?? res.total_credits ?? 0).toLocaleString();
-        document.getElementById('stat-python-ver').textContent = 'Python ' + (res.version || '已就绪');
+        document.getElementById('stat-python-ver').textContent = 'Python ' + (res.version || 'ready');
         document.getElementById('stat-python-path').textContent = res.python || '-';
         document.getElementById('refresh-button').disabled = false;
         document.getElementById('add-token-button').disabled = false;
-        connectionMessage('已自动连接，Python 后台已响应；账号登录校验与生成结果请查看下方状态。');
+        connectionMessage('Connected automatically; the Python backend responded. Check the account login checks and generation results in the status below.');
         return true;
       } catch (e) {
         if (e.code === 'connection_changed') return false;
         if (e.status !== 401 && e.status !== 403) {
-          document.getElementById('plugin-version').textContent = '连接失败';
-          document.getElementById('stat-python-ver').textContent = '后台状态获取失败';
+          document.getElementById('plugin-version').textContent = 'Connection failed';
+          document.getElementById('stat-python-ver').textContent = 'Failed to read backend status';
           document.getElementById('stat-python-path').textContent = e.message;
           document.getElementById('add-token-button').disabled = true;
-          tableMessage('tokens-tbody', 7, '后台暂时无响应', '账号同步成功不代表控制台读取成功。可点击刷新状态，页面也会自动重试读取；不会重新提交同步或生成。');
-          tableMessage('models-tbody', 3, '模型列表暂不可用', e.message);
+          tableMessage('tokens-tbody', 7, 'Backend not responding', 'A successful account sync does not mean the console can read it. You can click Refresh status; the page also retries automatically. Nothing is resubmitted.');
+          tableMessage('models-tbody', 3, 'Model list unavailable', e.message);
           connectionMessage(e.message, true);
         }
         return false;
@@ -714,14 +720,14 @@
     }
 
     function accountHealthBadge(token) {
-      // 旧后台未提供健康字段时也不再把 is_active 显示成绿色“正常”。
+      // Do not show is_active as a green "healthy" badge when an older backend has no health field.
       const fallback = token.ban_reason === 'session_expired'
-        ? { label: '登录态失效', level: 'danger', detail: '请通过登录助手重新同步。' }
+        ? { label: 'Session expired', level: 'danger', detail: 'Re-sync through the login assistant.' }
         : token.ban_reason
-          ? { label: '账号已禁用', level: 'danger', detail: '请检查禁用原因。' }
+          ? { label: 'Account disabled', level: 'danger', detail: 'Check why it was disabled.' }
           : token.is_active
-            ? { label: '已启用 · 未校验', level: 'warning', detail: '缓存积分不代表当前可用。' }
-            : { label: '已手动停用', level: 'warning', detail: '账号开关已关闭。' };
+            ? { label: 'Enabled · not verified', level: 'warning', detail: 'Cached credits do not mean it is currently usable.' }
+            : { label: 'Manually disabled', level: 'warning', detail: 'The account switch is off.' };
       const health = token.health || fallback;
       const level = ['success', 'warning', 'danger'].includes(health.level) ? health.level : 'warning';
       return `<span class="badge badge-${level}" title="${escapeAccountHealth(health.detail)}">${escapeAccountHealth(health.label)}</span>`;
@@ -733,7 +739,7 @@
         const res = await apiRequest('/v0/management/plugins/gflow/api/tokens');
         const tokens = res.tokens || [];
         if (tokens.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><h3>暂无 GFlow 账号</h3><p>点击上方“添加账号”，导入你有权使用的 Google Flow Cookies；实际生成需要可用额度及验证码配置。</p></td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><h3>No GFlow accounts yet</h3><p>Click "Add account" above to import Google Flow Cookies you are entitled to use; actual generation requires available quota and CAPTCHA configuration.</p></td></tr>';
           return;
         }
 
@@ -743,24 +749,24 @@
 
           html += `<tr>
             <td><strong>#${t.id}</strong></td>
-            <td>${escapeAccountHealth(t.email)} <small style="color:var(--text-dim);">(${escapeAccountHealth(t.remark || '无备注')})</small></td>
-            <td><strong style="color:var(--primary); font-size:14px;">${t.credits ?? 0}</strong><small style="display:block;color:var(--text-dim);">缓存记录</small></td>
+            <td>${escapeAccountHealth(t.email)} <small style="color:var(--text-dim);">(${escapeAccountHealth(t.remark || 'no note')})</small></td>
+            <td><strong style="color:var(--primary); font-size:14px;">${t.credits ?? 0}</strong><small style="display:block;color:var(--text-dim);">cached</small></td>
             <td>${escapeAccountHealth(t.current_project_name || t.current_project_id || '-')}</td>
             <td>
-              <span class="badge ${t.image_enabled ? 'badge-success' : 'badge-warning'}">图: ${t.image_enabled ? '开' : '关'}</span>
-              <span class="badge ${t.video_enabled ? 'badge-success' : 'badge-warning'}">视: ${t.video_enabled ? '开' : '关'}</span>
+              <span class="badge ${t.image_enabled ? 'badge-success' : 'badge-warning'}">Image: ${t.image_enabled ? 'on' : 'off'}</span>
+              <span class="badge ${t.video_enabled ? 'badge-success' : 'badge-warning'}">Video: ${t.video_enabled ? 'on' : 'off'}</span>
             </td>
             <td>${statusBadge}</td>
             <td style="display:flex; gap:6px;">
-              <button class="btn btn-secondary btn-sm" onclick="refreshCredits(${t.id})">查额</button>
-              <button class="btn btn-secondary btn-sm" onclick="toggleToken(${t.id}, ${!t.is_active})">${t.is_active ? '停用' : '启用'}</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteToken(${t.id})">删除</button>
+              <button class="btn btn-secondary btn-sm" onclick="refreshCredits(${t.id})">Refresh credits</button>
+              <button class="btn btn-secondary btn-sm" onclick="toggleToken(${t.id}, ${!t.is_active})">${t.is_active ? 'Disable' : 'Enable'}</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteToken(${t.id})">Delete</button>
             </td>
           </tr>`;
         }
         tbody.innerHTML = html;
       } catch (e) {
-        tableMessage('tokens-tbody', 7, e.status === 401 || e.status === 403 ? '请重新连接管理接口' : '账号加载失败', e.message);
+        tableMessage('tokens-tbody', 7, e.status === 401 || e.status === 403 ? 'Reconnect to the management API' : 'Failed to load accounts', e.message);
       }
     }
 
@@ -776,26 +782,33 @@
           document.getElementById('cfg-proxy-url').value = res.proxy.url || '';
         }
         if (res.call_logic) {
-          document.getElementById('cfg-call-logic').value = res.call_logic.mode || 'polling';
+          const callMode = res.call_logic.mode === 'load_aware' ? 'default' : res.call_logic.mode;
+          document.getElementById('cfg-call-logic').value = callMode || 'polling';
         }
         if (res.cache) {
           document.getElementById('cfg-cache-timeout').value = res.cache.timeout ?? 7200;
+        }
+        if (res.generation) {
+          document.getElementById('cfg-unsafe-retries').value = res.generation.unsafe_retries ?? 3;
         }
         configLoaded = true;
         document.getElementById('save-settings-button').disabled = false;
       } catch (e) {
         configLoaded = false;
         document.getElementById('save-settings-button').disabled = true;
-        connectionMessage('配置未加载，已禁止保存：' + e.message, true);
+        connectionMessage('Configuration not loaded; saving is disabled: ' + e.message, true);
       }
     }
 
     async function saveSettings() {
       if (!configLoaded || !managementKey) {
-        showToast('请等待自动连接并成功加载配置后再保存。', 'error');
+        showToast('Wait for the automatic connection and a successful config load before saving.', 'error');
         return;
       }
       try {
+        const unsafeRetries = parseInt(document.getElementById('cfg-unsafe-retries').value, 10);
+        const callMode = document.getElementById('cfg-call-logic').value;
+        const cacheTimeout = parseInt(document.getElementById('cfg-cache-timeout').value, 10);
         const payload = {
           captcha: {
             method: document.getElementById('cfg-captcha-method').value,
@@ -804,10 +817,19 @@
           proxy: {
             enabled: document.getElementById('cfg-proxy-enabled').checked,
             url: document.getElementById('cfg-proxy-url').value.trim(),
+          },
+          generation: {
+            unsafe_retries: Number.isFinite(unsafeRetries) ? unsafeRetries : 3,
+          },
+          call_logic: {
+            mode: callMode === 'load_aware' ? 'default' : callMode,
+          },
+          cache: {
+            timeout: Number.isFinite(cacheTimeout) ? cacheTimeout : 7200,
           }
         };
         await apiRequest('/v0/management/plugins/gflow/api/config', 'POST', payload);
-        showToast('配置已保存！');
+        showToast('Settings saved.');
       } catch (e) {
         showToast(e.message, 'error');
       }
@@ -820,14 +842,14 @@
         allModels = models;
         renderModels(models);
       } catch (e) {
-        tableMessage('models-tbody', 3, '模型列表未加载', e.message);
+        tableMessage('models-tbody', 3, 'Model list not loaded', e.message);
       }
     }
 
     function renderModels(list) {
       const tbody = document.getElementById('models-tbody');
       if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">无匹配模型</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No matching models</td></tr>';
         return;
       }
       tbody.innerHTML = list.map(m => `
@@ -851,21 +873,21 @@
       const field = document.getElementById('extension-public-url');
       const feedback = document.getElementById('extension-link-feedback');
       document.getElementById('extension-link-panel').hidden = false;
-      document.getElementById('extension-link-label').textContent = isSource ? '源码与安装说明地址' : '安装包下载地址';
+      document.getElementById('extension-link-label').textContent = isSource ? 'Source and install instructions URL' : 'Installer download URL';
       field.value = url;
       try {
         await navigator.clipboard.writeText(url);
-        feedback.textContent = '地址已复制，请到 Chrome / Edge 地址栏粘贴并回车。';
-        showToast('地址已复制，请在 Chrome / Edge 地址栏粘贴打开。');
+        feedback.textContent = 'URL copied. Paste it into the Chrome / Edge address bar and press Enter.';
+        showToast('URL copied. Paste it into the Chrome / Edge address bar to open it.');
       } catch (_) {
         field.focus();
         field.select();
-        feedback.textContent = '自动复制被限制。地址已选中，请按 Ctrl+C，再到 Chrome / Edge 地址栏粘贴。';
+        feedback.textContent = 'Automatic copy was blocked. The URL is selected; press Ctrl+C and paste it into the Chrome / Edge address bar.';
       }
     }
 
     async function copyExtensionConfig() {
-      if (!managementKey) return showToast('请等待自动连接完成后再复制。', 'error');
+      if (!managementKey) return showToast('Wait for the automatic connection to finish before copying.', 'error');
       const payload = {
         product: 'GFlow',
         apiUrl: window.location.origin + '/v0/management/plugins/gflow/api/extension-sync',
@@ -873,14 +895,14 @@
       };
       try {
         await navigator.clipboard.writeText(JSON.stringify(payload));
-        showToast('已复制，请粘贴到 GFlow 登录助手；配置含管理凭据，请勿分享。');
+        showToast('Copied. Paste it into the GFlow login assistant; the config contains management credentials, so do not share it.');
       } catch (_) {
-        showToast('复制被浏览器阻止，请允许此页面使用剪贴板后重试。', 'error');
+        showToast('The browser blocked the copy. Allow clipboard access for this page and try again.', 'error');
       }
     }
 
     function openAddTokenModal() {
-      if (!managementKey) return showToast('请等待插件自动连接完成。', 'error');
+      if (!managementKey) return showToast('Wait for the plugin to connect automatically.', 'error');
       document.getElementById('token-cookies').value = '';
       document.getElementById('token-project-id').value = '';
       document.getElementById('token-remark').value = '';
@@ -898,7 +920,7 @@
       const remark = document.getElementById('token-remark').value.trim();
 
       if (!cookies) {
-        alert('请输入 Google Flow Cookies 或 Session Token');
+        alert('Enter Google Flow Cookies or a Session Token');
         return;
       }
 
@@ -908,7 +930,7 @@
           project_id: projectId,
           remark: remark
         });
-        showToast('账号添加成功！');
+        showToast('Account added.');
         closeAddTokenModal();
         loadAll();
       } catch (e) {
@@ -919,7 +941,7 @@
     async function refreshCredits(id) {
       try {
         await apiRequest('/v0/management/plugins/gflow/api/refresh', 'POST', { token_id: id });
-        showToast('额度刷新成功！');
+        showToast('Credits refreshed.');
         loadAll();
       } catch (e) {
         showToast(e.message, 'error');
@@ -930,7 +952,7 @@
     async function toggleToken(id, enabled) {
       try {
         await apiRequest('/v0/management/plugins/gflow/api/tokens', 'PUT', { token_id: id, enabled });
-        showToast(enabled ? '账号已启用' : '账号已停用');
+        showToast(enabled ? 'Account enabled' : 'Account disabled');
         loadTokens();
       } catch (e) {
         showToast(e.message, 'error');
@@ -938,10 +960,10 @@
     }
 
     async function deleteToken(id) {
-      if (!confirm('确定删除该账号吗？')) return;
+      if (!confirm('Delete this account?')) return;
       try {
         await apiRequest('/v0/management/plugins/gflow/api/tokens', 'DELETE', { token_id: id });
-        showToast('账号已删除');
+        showToast('Account deleted');
         loadAll();
       } catch (e) {
         showToast(e.message, 'error');
@@ -963,8 +985,8 @@
       refreshTask = task;
       const button = document.getElementById('refresh-button');
       button.disabled = true;
-      button.textContent = '正在刷新…';
-      document.getElementById('plugin-version').textContent = '连接中';
+      button.textContent = 'Refreshing…';
+      document.getElementById('plugin-version').textContent = 'Connecting';
       task.promise = (async () => {
         if (includeSettings) {
           configLoaded = false;
@@ -976,7 +998,7 @@
         if (refreshTask === task) refreshTask = null;
         if (generation !== connectionGeneration) return;
         button.disabled = false;
-        button.textContent = '刷新状态';
+        button.textContent = 'Refresh status';
         if (!autoRefresh && managementKey) {
           autoRefresh = setInterval(() => { if (!document.hidden && managementKey) loadAll(false); }, 15000);
         }

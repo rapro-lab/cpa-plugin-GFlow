@@ -1,11 +1,11 @@
-// background.js - GFlow 登录助手后台服务
+// background.js - GFlow Login Assistant background service
 importScripts('common.js');
 
 const ALARM = 'gflow-cookie-sync';
 const FLOW_URL = 'https://flow.google.com/projects';
 let activeSync = null;
 
-// 日志系统
+// Logging system
 const Logger = {
   async log(level, message, details = null) {
     const timestamp = new Date().toISOString();
@@ -96,11 +96,11 @@ async function saveConfiguration(input) {
     autoSync: Boolean(input.autoSync)
   };
   if (!await chrome.permissions.contains({ origins: [connectionPermission(config.apiUrl)] })) {
-    throw new Error('请授权扩展连接本机 GFlow');
+    throw new Error('The extension needs permission to connect to the local GFlow');
   }
   await chrome.storage.local.set({ config });
   await restoreAlarm();
-  await Logger.info('GFlow 连接配置已保存', { apiUrl: config.apiUrl, loginAccount: config.loginAccount });
+  await Logger.info('GFlow connection config saved', { apiUrl: config.apiUrl, loginAccount: config.loginAccount });
   return publicState();
 }
 
@@ -123,9 +123,9 @@ async function closeTemporaryTab(tab) {
   }
 }
 
-// 监听范围只包含本次临时标签的 nzlxg 请求；Cookie 仅在内存中存在。
+// The listener only covers nzlxg requests from this temporary tab; Cookies exist in memory only.
 async function readObservedFlowCookies(tabId, email) {
-  if (!chrome.webRequest?.onBeforeSendHeaders) throw new Error('请重新加载 GFlow 登录助手以启用请求读取权限');
+  if (!chrome.webRequest?.onBeforeSendHeaders) throw new Error('Reload the GFlow Login Assistant to enable request reading permission');
   let cookieHeader='';
   const listener = details => {
     const url=new URL(details.url);
@@ -137,9 +137,9 @@ async function readObservedFlowCookies(tabId, email) {
     {urls:['https://flow.google.com/_/AiSandboxAngularFrontend/data/batchexecute*'],tabId}, ['requestHeaders','extraHeaders']);
   try {
     const diagnostic = await chrome.tabs.sendMessage(tabId, {action:'gflow-credit-check',email});
-    // 保留浏览器的真实顺序和同名 Cookie；拒绝空值及报文控制字符。
+    // Keep the browser's real order and duplicate Cookie names; reject empty values and control characters.
     if (!cookieHeader || cookieHeader.length > 262144 || /[\x00-\x1f\x7f]/.test(cookieHeader)) {
-      throw new Error('Chrome 未提供本次 Flow 请求的 Cookie，请确认扩展管理页已允许新权限后重试');
+      throw new Error('Chrome did not provide the Cookie for this Flow request. Make sure the extension management page allowed the new permission, then retry.');
     }
     const safe = {success:diagnostic?.success === true};
     if (['identity','network','rpc'].includes(diagnostic?.phase)) safe.phase=diagnostic.phase;
@@ -152,20 +152,20 @@ async function readObservedFlowCookies(tabId, email) {
 
 async function executeSync() {
   const { config } = await chrome.storage.local.get('config');
-  if (!config) throw new Error('请先从 GFlow 复制配置并保存');
+  if (!config) throw new Error('Copy the config from GFlow and save it first');
   const connection = validateConnection(config);
   const loginAccount = validateEmail(config.loginAccount);
 
-  await Logger.info('开始同步 GFlow 登录凭据...', { account: loginAccount });
+  await Logger.info('Starting GFlow session sync...', { account: loginAccount });
 
-  // 固定本次同步的窗口和 Cookie 存储区，避免后台标签与读取来自不同窗口。
+  // Pin this sync to one window and cookie store, so the background tab and the read come from the same window.
   const sourceTabs = chrome.tabs?.query ? await chrome.tabs.query({ active: true, currentWindow: true }) : [];
   const sourceTab = sourceTabs[0];
   let storeId;
   if (sourceTab && chrome.cookies?.getAllCookieStores) {
     const stores = await chrome.cookies.getAllCookieStores();
     storeId = stores.find(item => item.tabIds.includes(sourceTab.id))?.id;
-    if (!storeId) throw new Error('无法确定当前窗口的登录态，请在 Flow 所在窗口重新打开助手');
+    if (!storeId) throw new Error('Cannot determine the session for the current window. Open the assistant in the window where Flow is running.');
   }
   let tempTab = null;
   let rawCookies, frontend, observed;
@@ -176,38 +176,38 @@ async function executeSync() {
   } catch (_) {}
   try {
     if (chrome.tabs?.create && chrome.tabs?.get) {
-      await Logger.info('正在后台刷新 Flow 登录态…');
+      await Logger.info('Refreshing the Flow session in the background…');
       tempTab = await chrome.tabs.create({ url: pageUrl, active: false,
         ...(Number.isInteger(sourceTab?.windowId) ? { windowId: sourceTab.windowId } : {}) });
       const loadedTab = await waitForTabReady(tempTab.id);
-      if (!loadedTab) throw new Error('Flow 页面加载超时，请确认网页可以正常打开后重试');
+      if (!loadedTab) throw new Error('Timed out loading the Flow page. Make sure the site opens normally, then retry.');
       if (new URL(loadedTab.url || '').hostname !== 'flow.google.com') {
-        throw new Error('Flow 页面要求重新登录，请先在当前浏览器完成登录');
+        throw new Error('The Flow page requires signing in again. Sign in in this browser first.');
       }
       await new Promise(resolve => setTimeout(resolve, 5000));
       if (chrome.tabs.sendMessage) {
         let session;
         try { session = await chrome.tabs.sendMessage(tempTab.id, {action:'gflow-page-session',email:loginAccount}); }
-        catch (_) { throw new Error('无法读取 Flow 页面登录态，请确认助手已重新加载后重试'); }
-        if (!session?.signed_in) throw new Error('Flow 页面没有返回已登录账号，请在当前浏览器重新登录 Flow 后同步');
-        if (session.account_matches !== true) throw new Error('Flow 当前账号与助手填写的邮箱不一致，请核对邮箱或使用独立浏览器配置');
-        if (!session.frontend) throw new Error('Flow 页面认证字段未加载完整，请刷新 Flow 后重试');
+        catch (_) { throw new Error('Cannot read the Flow page session. Make sure the assistant was reloaded, then retry.'); }
+        if (!session?.signed_in) throw new Error('The Flow page did not return a signed-in account. Sign in to Flow in this browser, then sync.');
+        if (session.account_matches !== true) throw new Error('The current Flow account does not match the email entered in the assistant. Check the email or use a separate browser profile.');
+        if (!session.frontend) throw new Error('The Flow page authentication fields did not load fully. Refresh Flow and retry.');
         frontend = session.frontend;
         observed = await readObservedFlowCookies(tempTab.id, loginAccount);
-        await Logger.info('Flow 浏览器额度检查完成', observed.diagnostic);
+        await Logger.info('Flow browser credit check completed', observed.diagnostic);
       }
-      // 根据实际预热标签确定存储区；定时同步没有活动标签时也保持一致。
+      // Determine the cookie store from the actual warm-up tab; keep it consistent for scheduled syncs with no active tab.
       if (chrome.cookies?.getAllCookieStores) {
         const stores = await chrome.cookies.getAllCookieStores();
         const warmedStore = stores.find(item => item.tabIds.includes(tempTab.id));
         if (!warmedStore || (storeId && storeId !== warmedStore.id)) {
-          throw new Error('Flow 页面与当前窗口登录态不一致，请从 Flow 所在窗口同步');
+          throw new Error('The Flow page and the current window have different sessions. Sync from the window where Flow is running.');
         }
         storeId = warmedStore.id;
       }
     }
     if (!observed) {
-      // 兼容没有页面消息 API 的测试/旧浏览器；现用 Chrome 使用实际请求头。
+      // Compatibility with test/older browsers that lack the page message API; current Chrome uses the real request headers.
       const scopes = [FLOW_URL, 'https://flow.google.com/_/AiSandboxAngularFrontend/data/batchexecute'];
       const groups = [];
       for (const url of scopes) {
@@ -216,7 +216,7 @@ async function executeSync() {
       rawCookies = groups.flat();
     }
     const googleCookies = observed?.cookieHeader || serializeFlowCookies(rawCookies);
-    await Logger.info('Cookie 提取成功，正在提交至本机 GFlow 内核...');
+    await Logger.info('Cookie extracted. Submitting to the local GFlow core...');
 
     const payload = {
       login_account: loginAccount,
@@ -244,7 +244,7 @@ async function executeSync() {
         signal: controller.signal
       });
     } catch (error) {
-      const errText = error.name === 'AbortError' ? 'GFlow 同步超时，请检查代理设置后重试' : '无法连接本机 GFlow，请确认 EasyCPA 内核运行中';
+      const errText = error.name === 'AbortError' ? 'GFlow sync timed out. Check the proxy settings and retry.' : 'Cannot reach the local GFlow. Make sure the EasyCPA core is running.';
       await Logger.error(errText);
       throw new Error(errText);
     } finally {
@@ -255,12 +255,12 @@ async function executeSync() {
     try { result = await response.json(); } catch (_) {}
     if (!response.ok || result?.success !== true) {
       if (response.status === 401 || response.status === 403) {
-        await Logger.error('连接凭据失效');
-        throw new Error('连接凭据失效，请回到 GFlow 重新复制扩展配置');
+        await Logger.error('Connection credential expired');
+        throw new Error('The connection credential expired. Go back to GFlow and copy the extension config again.');
       }
       if (response.status === 404) {
-        await Logger.error('接口未找到');
-        throw new Error('当前 GFlow 版本不支持扩展同步，请更新插件');
+        await Logger.error('Endpoint not found');
+        throw new Error('This GFlow version does not support extension sync. Update the plugin.');
       }
       const detail = result?.error;
       const safeMessage = typeof detail?.message === 'string'
@@ -270,12 +270,12 @@ async function executeSync() {
       const code = /^gflow_[a-z_]+$/.test(detail?.code || '') ? detail.code : null;
       const errorMsg = safeMessage
         ? safeMessage + (code ? ' [' + code + ']' : '')
-        : 'GFlow 同步失败（HTTP ' + response.status + '）。请查看日志获取详细诊断。';
-      await Logger.error('同步失败', { error: errorMsg, diagnostic: safeServerDiagnostic(detail?.diagnostic) });
+        : 'GFlow sync failed (HTTP ' + response.status + '). Check the log for a detailed diagnosis.';
+      await Logger.error('Sync failed', { error: errorMsg, diagnostic: safeServerDiagnostic(detail?.diagnostic) });
       throw new Error(errorMsg);
     }
 
-    const actionMsg = result.action === 'updated' ? 'GFlow 账号登录态已更新' : 'GFlow 账号已添加';
+    const actionMsg = result.action === 'updated' ? 'GFlow account session updated' : 'GFlow account added';
     await Logger.success(`✅ ${actionMsg}`, { action: result.action });
     return { success: true, action: result.action, message: actionMsg };
   } finally {

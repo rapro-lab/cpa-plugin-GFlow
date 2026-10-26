@@ -123,6 +123,11 @@ class GFlowService:
         else:
             await self.db.check_and_migrate_db(raw_cfg)
 
+        # Replace shared/empty secrets with random ones before anything reads
+        # the admin config. The plaintext values are written once to
+        # admin-credentials.txt next to flow.db.
+        await self.db.ensure_bootstrap_credentials()
+
         await self.db.reload_config_to_memory()
         # 一次用户生成只尝试一次；防止失败重启浏览器并重复提交。
         config.set_flow_max_retries(1)
@@ -335,6 +340,8 @@ class GFlowService:
         return {"success": True, "credits": credits}
 
     async def handle_get_config(self, _params: Dict[str, Any]) -> Dict[str, Any]:
+        from src.core.config import config as _cfg
+
         await self.initialize()
         cap_cfg = await self.db.get_captcha_config()
         proxy_cfg = await self.db.get_proxy_config()
@@ -358,6 +365,9 @@ class GFlowService:
             },
             "cache": {
                 "timeout": cache_cfg.cache_timeout if cache_cfg else 7200,
+            },
+            "generation": {
+                "unsafe_retries": _cfg.unsafe_generation_retries,
             }
         }
 
@@ -378,6 +388,27 @@ class GFlowService:
                 enabled=bool(p.get("enabled")),
                 proxy_url=p.get("url"),
             )
+        if "generation" in params:
+            from src.core.config import config as _cfg
+            g = params["generation"] or {}
+            unsafe_retries = g.get("unsafe_retries")
+            if unsafe_retries is not None:
+                await self.db.update_generation_config(unsafe_retries=unsafe_retries)
+                _cfg.set_unsafe_generation_retries(unsafe_retries)
+        if "call_logic" in params:
+            from src.core.config import config as _cfg
+            c = params["call_logic"] or {}
+            mode = c.get("mode")
+            if mode is not None:
+                await self.db.update_call_logic_config(mode)
+                _cfg.set_call_logic_mode(mode)
+        if "cache" in params:
+            from src.core.config import config as _cfg
+            ca = params["cache"] or {}
+            timeout = ca.get("timeout")
+            if timeout is not None:
+                await self.db.update_cache_config(timeout=timeout)
+                _cfg.set_cache_timeout(timeout)
         return {"success": True}
 
     async def handle_list_models(self, _params: Dict[str, Any]) -> Dict[str, Any]:
@@ -439,6 +470,238 @@ class GFlowService:
             if context is not None:
                 CURRENT_BINDING.reset(context)
 
+    async def _handle_upscale_completion(self, req_id: str, params: Dict[str, Any], spec) -> None:
+        """Upscale an existing Flow video (1080p/4K) and return its media URL.
+
+        Exposed as the pseudo-models ``gflow-upscale-1080p`` / ``gflow-upscale-4k``
+        so the operation is reachable through the normal chat-completions route.
+        """
+        import asyncio as _asyncio
+        import base64 as _base64
+        import time as _time
+
+        from src.core.logger import debug_logger
+
+        resolution, model_key = spec
+
+        def fail(code: str, message: str) -> None:
+            self.send_line({
+                "id": req_id,
+                "done": True,
+                "error": {"type": code, "message": message},
+            })
+
+        media_id = str(params.get("video_media_id") or "").strip()
+        if not media_id:
+            fail("invalid_request", "video_media_id is required for an upscale request")
+            return
+
+        await self.initialize()
+
+        active_tokens = await self.token_manager.get_active_tokens()
+        if not active_tokens:
+            fail("no_account", "no active account available for upscale")
+            return
+
+        wanted_token = params.get("token_id")
+        token = active_tokens[0]
+        if wanted_token is not None:
+            for candidate in active_tokens:
+                if int(getattr(candidate, "id", 0) or 0) == int(wanted_token):
+                    token = candidate
+                    break
+
+        project_id = str(params.get("project_id") or "").strip() or str(
+            getattr(token, "current_project_id", "") or ""
+        ).strip()
+        if not project_id:
+            fail("invalid_request", "project_id is required (token has no bound project)")
+            return
+
+        aspect_raw = str(params.get("aspect_ratio") or "portrait").strip().lower()
+        if aspect_raw in {"auto", "none", "source"}:
+            aspect_ratio = None
+        elif aspect_raw in {"landscape", "16:9", "horizontal"}:
+            aspect_ratio = "VIDEO_ASPECT_RATIO_LANDSCAPE"
+        else:
+            aspect_ratio = "VIDEO_ASPECT_RATIO_PORTRAIT"
+
+        is_stream = bool(params.get("stream", False))
+        emit = (
+            lambda text: self.send_line({"id": req_id, "stream": True, "chunk": text})
+        ) if is_stream else None
+
+        debug_logger.log_info(
+            f"[VIDEO UPSAMPLE] submit media={media_id} project={project_id} "
+            f"resolution={resolution} model={model_key} token={token.id}"
+        )
+
+        try:
+            result = await self.flow_client.upsample_video(
+                at=token.at,
+                project_id=project_id,
+                video_media_id=media_id,
+                aspect_ratio=aspect_ratio,
+                resolution=resolution,
+                model_key=model_key,
+                user_paygate_tier=str(
+                    getattr(token, "user_paygate_tier", "PAYGATE_TIER_ONE")
+                    or "PAYGATE_TIER_ONE"
+                ),
+                token_id=token.id,
+                token_video_concurrency=getattr(token, "video_concurrency", None),
+                google_cookies=getattr(token, "google_cookies", None),
+            )
+        except Exception as error:
+            fail("upscale_submit_failed", f"{type(error).__name__}: {error}")
+            return
+
+        operations = result.get("operations") or []
+        if not operations:
+            fail("upscale_submit_failed", "upsample request returned no operations")
+            return
+
+        try:
+            from src.core.config import config as _flow_config
+
+            timeout_seconds = int(getattr(_flow_config, "upsample_timeout", 300) or 300)
+        except Exception:
+            timeout_seconds = 300
+
+        operation_id = str(
+            (operations[0] or {}).get("name")
+            or ((operations[0] or {}).get("operation") or {}).get("name")
+            or ""
+        ).strip()
+        if not operation_id:
+            fail("upscale_submit_failed", "upsample request returned no media id")
+            return
+
+        deadline = _time.monotonic() + timeout_seconds
+        last_status = ""
+        video_url = ""
+        media_name = operation_id
+
+        # Flow publishes the upscaled video as "<media id>_upsampled" and the
+        # as29s media lookup (get_media) is what the web UI itself calls once
+        # the render finishes. Polling that is more reliable than the status
+        # enums, which carry no URL for upscale operations.
+        while _time.monotonic() < deadline:
+            media_result = None
+            try:
+                media_result = await self.flow_client.get_media(
+                    at=token.at,
+                    media_name=operation_id,
+                    google_cookies=getattr(token, "google_cookies", None),
+                    token_id=token.id,
+                    project_id=project_id,
+                    operation_id=operation_id,
+                )
+            except Exception as error:
+                last_status = f"{type(error).__name__}: {error}"[:200]
+            if media_result:
+                found_url = str(
+                    (media_result.get("video") or {}).get("fifeUrl") or ""
+                ).strip()
+                if found_url:
+                    video_url = found_url
+                    last_status = "MEDIA_GENERATION_STATUS_SUCCESSFUL"
+                    break
+                last_status = "media not ready"
+            if emit:
+                emit(
+                    "data: "
+                    + json.dumps(
+                        {"gflow_progress": {"stage": "upscale_polling", "status": last_status}},
+                        ensure_ascii=False,
+                    )
+                    + "\n\n"
+                )
+            await _asyncio.sleep(5)
+
+        if not video_url:
+            fail(
+                "upscale_timeout",
+                f"upsample did not expose a media URL within {timeout_seconds}s "
+                f"(media={operation_id}, last: {last_status or 'unknown'})",
+            )
+            return
+
+        if not video_url and media_name:
+            try:
+                media_result = await self.flow_client.get_media(
+                    token.at,
+                    media_name,
+                    token_id=token.id,
+                    google_cookies=getattr(token, "google_cookies", None),
+                    project_id=project_id,
+                )
+                encoded = (media_result.get("video") or {}).get("encodedVideo") or ""
+                if encoded:
+                    target = os.path.join(self.tmp_dir, f"upscale-{media_id}.mp4")
+                    with open(target, "wb") as handle:
+                        handle.write(_base64.b64decode(encoded))
+                    video_url = f"/tmp/{os.path.basename(target)}"
+            except Exception as error:
+                debug_logger.log_error(f"[VIDEO UPSAMPLE] get_media failed: {error}")
+
+        if not video_url:
+            fail(
+                "upscale_no_media",
+                "upsample finished but no media URL was returned: "
+                + json.dumps(completed_operation, ensure_ascii=False)[:600],
+            )
+            return
+
+        content = (
+            f"<video src='{video_url}' data-media-id='{media_id}' controls "
+            f"style='max-width:100%'></video>\n"
+            f"upscaled: {resolution} | model: {model_key} | media: {media_id}"
+        )
+        response = {
+            "id": f"chatcmpl-upscale-{int(_time.time())}",
+            "object": "chat.completion",
+            "created": int(_time.time()),
+            "model": "flow2api",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": content},
+                    "finish_reason": "stop",
+                }
+            ],
+            "gflow_upscale": {
+                "object": "video.upscale",
+                "video_media_id": media_id,
+                "resolution": resolution,
+                "model_key": model_key,
+                "url": video_url,
+                "media_name": media_name,
+                "raw_status": last_status,
+            },
+        }
+        debug_logger.log_info(f"[VIDEO UPSAMPLE] completed url={video_url}")
+
+        if is_stream:
+            chunk = dict(response)
+            chunk["object"] = "chat.completion.chunk"
+            chunk["choices"] = [
+                {
+                    "index": 0,
+                    "delta": response["choices"][0]["message"],
+                    "finish_reason": "stop",
+                }
+            ]
+            self.send_line(
+                {
+                    "id": req_id,
+                    "stream": True,
+                    "chunk": "data: " + json.dumps(chunk, ensure_ascii=False) + "\n\n",
+                }
+            )
+            self.send_line({"id": req_id, "stream": True, "chunk": "data: [DONE]\n\n"})
+        self.send_line({"id": req_id, "done": True, "result": response})
+
     async def _handle_chat_completion(self, req_id: str, params: Dict[str, Any]):
         await self.initialize()
         from model_adapter import normalize_model_alias, resolve_model_name
@@ -456,6 +719,17 @@ class GFlowService:
             actual_model = model_raw[len("gflow-"):]
         else:
             actual_model = model_raw
+
+        upscale_spec = {
+            "upscale-1080p": ("VIDEO_RESOLUTION_1080P", "veo_3_1_upsampler_1080p"),
+            "upscale-4k": ("VIDEO_RESOLUTION_4K", "veo_3_1_upsampler_4k"),
+            "upscale-1080p-nokey": ("VIDEO_RESOLUTION_1080P", ""),
+            "upscale-4k-nokey": ("VIDEO_RESOLUTION_4K", ""),
+            "upscale-720p": ("VIDEO_RESOLUTION_720P", ""),
+        }.get(actual_model)
+        if upscale_spec:
+            await self._handle_upscale_completion(req_id, params, upscale_spec)
+            return
 
         params_clean = dict(params)
         params_clean["model"] = normalize_model_alias(actual_model)

@@ -14,3 +14,8 @@ data_test/
 !downloads/GFlow-browser-extension.zip
 
 logs.txt
+
+# Local tooling and build output
+.venv/
+build/
+python/tmp/

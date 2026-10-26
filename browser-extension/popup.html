@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GFlow 登录助手</title>
+  <title>GFlow Login Assistant</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -11,65 +11,65 @@
     <div class="header-title">
       <span class="logo">🔄</span>
       <div>
-        <h1>GFlow 登录助手</h1>
-        <div class="subtitle">EasyCPA Google Flow 登录态同步</div>
+        <h1>GFlow Login Assistant</h1>
+        <div class="subtitle">EasyCPA Google Flow session sync</div>
       </div>
     </div>
-    <a href="https://github.com/daodeqing/cpa-plugin-GFlow/tree/main/browser-extension" target="_blank" class="github-link" title="查看 GitHub 源码">GitHub</a>
+    <a href="https://github.com/daodeqing/cpa-plugin-GFlow/tree/main/browser-extension" target="_blank" class="github-link" title="View GitHub source">GitHub</a>
   </div>
 
-  <div id="status" class="status-banner" role="status" aria-live="polite" aria-atomic="true">正在读取状态...</div>
+  <div id="status" class="status-banner" role="status" aria-live="polite" aria-atomic="true">Reading status...</div>
 
   <div class="card">
-    <div class="card-title">快捷导入配置</div>
-    <div class="card-desc">在 GFlow 页面点击【复制扩展配置】后，直接在此粘贴：</div>
+    <div class="card-title">Quick import</div>
+    <div class="card-desc">Click "Copy extension config" on the GFlow page, then paste it here:</div>
     <div class="paste-row">
-      <input type="text" id="quickPaste" placeholder='粘贴从 GFlow 页面复制的配置 JSON' />
-      <button type="button" class="btn btn-secondary btn-sm" id="quickFillBtn">识别填入</button>
+      <input type="text" id="quickPaste" placeholder='Paste the config JSON copied from the GFlow page' />
+      <button type="button" class="btn btn-secondary btn-sm" id="quickFillBtn">Fill in</button>
     </div>
   </div>
 
   <form id="setup">
     <div class="form-group">
-      <label for="apiUrl">连接接口 (API URL)</label>
+      <label for="apiUrl">Connection endpoint (API URL)</label>
       <input type="text" id="apiUrl" placeholder="http://127.0.0.1:8317/v0/management/plugins/gflow/api/extension-sync" required />
     </div>
 
     <div class="form-group">
-      <label for="connectionToken">连接 Token (凭据)</label>
-      <input type="password" id="connectionToken" placeholder="输入从 GFlow 复制的管理凭据" required autocomplete="off" />
+      <label for="connectionToken">Connection token (credential)</label>
+      <input type="password" id="connectionToken" placeholder="Paste the management credential copied from GFlow" required autocomplete="off" />
     </div>
 
     <div class="form-group">
-      <label for="email">当前 Google 账号邮箱</label>
+      <label for="email">Current Google account email</label>
       <input type="email" id="email" placeholder="name@example.com" required />
-      <div class="field-hint">确保与当前 Chrome 窗口已登录的 Flow 账号邮箱一致。</div>
+      <div class="field-hint">Make sure it matches the Flow account signed in to this Chrome window.</div>
     </div>
 
     <div class="checkbox-row">
       <label>
         <input type="checkbox" id="autoSync" checked />
-        每 60 分钟自动同步（需保持浏览器开启）
+        Auto-sync every 60 minutes (browser must stay open)
       </label>
     </div>
 
     <div class="actions">
-      <button type="submit" class="btn btn-primary" id="saveAndSyncBtn">保存并立即同步</button>
-      <button type="button" class="btn btn-outline" id="saveOnlyBtn">仅保存配置</button>
+      <button type="submit" class="btn btn-primary" id="saveAndSyncBtn">Save and sync now</button>
+      <button type="button" class="btn btn-outline" id="saveOnlyBtn">Save config only</button>
     </div>
 
     <div class="secondary-actions">
-      <button type="button" class="btn btn-link" id="logsBtn">📋 查看同步日志</button>
-      <button type="button" class="btn btn-link danger" id="forgetBtn">清除配置</button>
+      <button type="button" class="btn btn-link" id="logsBtn">📋 View sync log</button>
+      <button type="button" class="btn btn-link danger" id="forgetBtn">Clear config</button>
     </div>
   </form>
 
   <div class="guide">
-    <strong>📌 极简使用说明：</strong>
+    <strong>📌 Quick start:</strong>
     <ol>
-      <li>在本浏览器打开并登录 <code>flow.google.com</code>，确保能进入项目页；</li>
-      <li>在 EasyCPA GFlow 管理页点击“复制扩展配置”，粘贴至上方快捷框；</li>
-      <li>点击“保存并立即同步”，助手将在后台自动刷新并提交最新登录凭据。</li>
+      <li>Open and sign in to <code>flow.google.com</code> in this browser and make sure the project page loads;</li>
+      <li>In the EasyCPA GFlow console click "Copy extension config" and paste it into the quick box above;</li>
+      <li>Click "Save and sync now"; the assistant refreshes in the background and submits the latest credentials.</li>
     </ol>
   </div>
 

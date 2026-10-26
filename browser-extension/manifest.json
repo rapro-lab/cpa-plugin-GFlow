@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "GFlow 登录助手",
+  "name": "GFlow Login Assistant",
   "version": "1.3.4",
-  "description": "自动提取 Google Flow 登录态并同步至 EasyCPA GFlow 插件系统",
+  "description": "Automatically extracts the Google Flow session and syncs it to the EasyCPA GFlow plugin system",
   "permissions": [
     "cookies",
     "alarms",

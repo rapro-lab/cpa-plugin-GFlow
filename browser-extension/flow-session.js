@@ -1,4 +1,4 @@
-// 只读取 Google Flow 已加载的认证字段，不执行创作，不读取其他网站。
+// Reads only the authentication fields already loaded by Google Flow; creates nothing and reads no other site.
 chrome.runtime.onMessage.addListener((request, sender, respond) => {
   if (sender.id !== chrome.runtime.id || !['gflow-page-session', 'gflow-credit-check'].includes(request.action)) return false;
   const source = Array.from(document.scripts).map(script => script.textContent || '').join('\n');
@@ -13,7 +13,7 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
   const bl = source.match(/boq_labs-ai-sandbox-frontend_[A-Za-z0-9_.-]+/)?.[0] || '';
   const signedIn = typeof email === 'string' && email.includes('@');
   const matches = signedIn && email.trim().toLowerCase() === String(request.email || '').trim().toLowerCase();
-  // 认证参数只回传给本扩展并提交到用户配对的本机接口，不写入日志或存储。
+  // Authentication parameters go back only to this extension and to the user-paired local endpoint; they are never logged or stored.
   if (request.action === 'gflow-credit-check') {
     if (!matches || !at || !sid || !bl) { respond({success:false, phase:'identity'}); return false; }
     checkFlowCredits({at,sid,bl}).then(respond, () => respond({success:false,phase:'network'}));
@@ -24,7 +24,7 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
   return false;
 });
 
-// 固定为只读额度 RPC，不接受任意 URL、方法或业务参数。
+// Fixed to the read-only credits RPC; no arbitrary URL, method or business parameters are accepted.
 async function checkFlowCredits({at,sid,bl}) {
   const url = new URL('/_/AiSandboxAngularFrontend/data/batchexecute', 'https://flow.google.com');
   url.search = new URLSearchParams({rpcids:'nzlxg', 'source-path':location.pathname,

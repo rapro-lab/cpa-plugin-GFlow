@@ -368,7 +368,6 @@ class TokenManager:
         protocol_mode: str = "session",
         google_cookies: Optional[str] = None,
         login_account: Optional[str] = None,
-        login_password: Optional[str] = None,
         proxy_url: Optional[str] = None,
         auto_refresh_enabled: bool = True,
         refresh_interval_minutes: int = 120,
@@ -486,7 +485,6 @@ class TokenManager:
             protocol_mode=self._normalize_protocol_mode(protocol_mode),
             google_cookies=(google_cookies or "").strip(),
             login_account=(login_account or "").strip(),
-            login_password=login_password or "",
             proxy_url=self._normalize_token_proxy_url(proxy_url),
             auto_refresh_enabled=bool(auto_refresh_enabled),
             refresh_interval_minutes=self._normalize_refresh_interval(
@@ -530,7 +528,6 @@ class TokenManager:
         protocol_mode: Optional[str] = None,
         google_cookies: Optional[str] = None,
         login_account: Optional[str] = None,
-        login_password: Optional[str] = None,
         proxy_url: Optional[str] = None,
         auto_refresh_enabled: Optional[bool] = None,
         refresh_interval_minutes: Optional[int] = None,
@@ -580,8 +577,6 @@ class TokenManager:
             update_fields["google_cookies"] = google_cookies.strip()
         if login_account is not None:
             update_fields["login_account"] = login_account.strip()
-        if login_password is not None:
-            update_fields["login_password"] = login_password
         if proxy_url is not None:
             update_fields["proxy_url"] = self._normalize_token_proxy_url(proxy_url)
         if auto_refresh_enabled is not None:

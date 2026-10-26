@@ -34,6 +34,7 @@ from curl_cffi.requests import AsyncSession
 
 from ..core.logger import debug_logger
 from ..core.config import config
+from ..core.tls import tls_verify_param
 from .recaptcha_runtime import (
     TRUSTED_RECAPTCHA_HOOK_SOURCE as PERSONAL_TRUSTED_RECAPTCHA_HOOK_SOURCE,
     build_recaptcha_execute_script,
@@ -9283,7 +9284,7 @@ class BrowserCaptchaService:
                 proxy=proxy_url,
                 headers={"Accept": "*/*"},
                 impersonate="chrome120",
-                verify=False,
+                verify=tls_verify_param(),
             )
 
         if response.status_code != 200 or not response.content:
@@ -9736,7 +9737,7 @@ class BrowserCaptchaService:
                 proxy=proxy_url,
                 headers={"Accept": "*/*"},
                 impersonate="chrome120",
-                verify=False,
+                verify=tls_verify_param(),
             )
 
         if response.status_code != 200 or not response.content:

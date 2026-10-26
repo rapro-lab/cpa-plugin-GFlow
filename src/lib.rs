@@ -602,7 +602,10 @@ fn handle_management_handle(req: &[u8]) -> Result<Vec<u8>, String> {
                     "content-type": ["text/html; charset=utf-8"],
                     "cache-control": ["no-store"],
                     "referrer-policy": ["no-referrer"],
-                    "x-content-type-options": ["nosniff"]
+                    "x-content-type-options": ["nosniff"],
+                    "content-security-policy": [
+                        "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; base-uri 'none'; form-action 'self'; object-src 'none'"
+                    ]
                 },
                 "Body": b64
             }

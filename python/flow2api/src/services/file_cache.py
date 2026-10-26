@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from curl_cffi.requests import AsyncSession
 from ..core.config import config
 from ..core.logger import debug_logger
+from ..core.tls import tls_verify_param
 
 
 class FileCache:
@@ -334,7 +335,7 @@ class FileCache:
                         proxy=proxy_url,
                         headers=headers,
                         impersonate="chrome120",
-                        verify=False,
+                        verify=tls_verify_param(),
                     )
 
                     if response.status_code == 200 and response.content:

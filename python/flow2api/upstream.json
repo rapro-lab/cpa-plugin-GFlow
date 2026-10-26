@@ -36,11 +36,11 @@
     },
     "python/flow2api/src/api/admin.py": {
       "upstream_path": "src/api/admin.py",
-      "sha256": "1f2e7d44c26b7b77e52e5802707a565311c1bd8d23973a4d853ce94f0708d34c"
+      "sha256": "bf6c245c49b0e7b5fcc4692682544daf69a016dd7b9a4a1f755acfa6c6edd84c"
     },
     "python/flow2api/src/api/routes.py": {
       "upstream_path": "src/api/routes.py",
-      "sha256": "3751a94b3dc7a5ca12c2c4aa7e803a3398d02d57a306a55cb81f644d4aaec375"
+      "sha256": "159a90e7b5cf7dbf5e368a9dd179dc808053769eab399f6b281b7bd7279f3d66"
     },
     "python/flow2api/src/core/__init__.py": {
       "upstream_path": "src/core/__init__.py",
@@ -60,7 +60,7 @@
     },
     "python/flow2api/src/core/config.py": {
       "upstream_path": "src/core/config.py",
-      "sha256": "cc4fe4a376fce119ca2584780f7e273ef7059836744183bd47096e17b3ead0ad"
+      "sha256": "5ff039f001077fb3d87b5909e7e975daa530b2152f903c2e1d2c4acdab19c485"
     },
     "python/flow2api/src/core/database.py": {
       "upstream_path": "src/core/database.py",
@@ -100,7 +100,7 @@
     },
     "python/flow2api/src/services/file_cache.py": {
       "upstream_path": "src/services/file_cache.py",
-      "sha256": "07e246db2b7ab7bfe9a17ed9d549d18366af7ada998ba5faffaadb4a2f5a96fc"
+      "sha256": "efb84f51ad99078bc15b9b3710d26cb6064a6a7994f1bc60f38c8938872a58f7"
     },
     "python/flow2api/src/services/generation_handler.py": {
       "upstream_path": "src/services/generation_handler.py",
@@ -145,12 +145,14 @@
   "local_patches": {
     "python/flow2api/src/services/flow_frontend.py": "Plugin frontend integration retained locally (pre-existing divergence).",
     "python/flow2api/src/main.py": "Calls ensure_bootstrap_credentials() before reloading config (security hardening).",
-    "python/flow2api/src/api/admin.py": "bcrypt login, login throttling, expiring session tokens, removal of write-only login_password.",
+    "python/flow2api/src/api/admin.py": "bcrypt login, login throttling, expiring session tokens, removal of write-only login_password; outbound TLS verification enabled.",
     "python/flow2api/src/core/auth.py": "Constant-time comparisons, bcrypt password verification, fail-closed empty secrets.",
-    "python/flow2api/src/core/config.py": "unsafe_retries setting and tolerant admin/api secret properties (security hardening).",
+    "python/flow2api/src/core/config.py": "unsafe_retries setting, tolerant admin/api secret properties and tls_verify/tls_ca_bundle settings.",
     "python/flow2api/src/core/database.py": "unsafe_retries column, bootstrap secret rotation, login_password column dropped on upgrade.",
     "python/flow2api/src/core/models.py": "unsafe_retries field; write-only login_password field removed.",
     "python/flow2api/src/services/browser_captcha.py": "Plugin browser lifetime and diagnostics integration (pre-existing divergence).",
-    "python/flow2api/src/services/generation_handler.py": "Content-filter retry budget (unsafe_retries) (pre-existing divergence)."
+    "python/flow2api/src/services/generation_handler.py": "Content-filter retry budget (unsafe_retries) (pre-existing divergence).",
+    "python/flow2api/src/api/routes.py": "Outbound TLS verification enabled for media downloads (tls_verify_param).",
+    "python/flow2api/src/services/file_cache.py": "Outbound TLS verification enabled for cached media downloads (tls_verify_param)."
   }
 }

@@ -7,10 +7,12 @@ Covers the three approved items:
 """
 
 import asyncio
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "python"))
@@ -259,6 +261,73 @@ class RepositorySecretTests(unittest.TestCase):
             with self.subTest(file=name):
                 self.assertNotIn("han1234", text)
                 self.assertNotRegex(text, r'admin_password\s*=\s*"admin"')
+
+
+class TlsPolicyTests(unittest.TestCase):
+    """Outbound TLS verification is on unless explicitly disabled."""
+
+    TLS_CALL_SITES = (
+        "python/flow2api/src/api/admin.py",
+        "python/flow2api/src/api/routes.py",
+        "python/flow2api/src/services/file_cache.py",
+        "python/flow2api/src/services/browser_captcha_personal.py",
+    )
+
+    def setUp(self):
+        from src.core import tls
+
+        self.tls = tls
+        self.original = config._config.setdefault("flow", {}).get("tls_verify", True)
+
+    def tearDown(self):
+        config._config["flow"]["tls_verify"] = self.original
+        os.environ.pop("GFLOW_TLS_VERIFY", None)
+        os.environ.pop("GFLOW_TLS_CA_BUNDLE", None)
+
+    def test_verification_is_enabled_by_default(self):
+        config._config["flow"]["tls_verify"] = True
+        os.environ.pop("GFLOW_TLS_VERIFY", None)
+        self.assertIs(self.tls.tls_verify_param(), True)
+
+    def test_config_can_disable_verification(self):
+        config._config["flow"]["tls_verify"] = False
+        os.environ.pop("GFLOW_TLS_VERIFY", None)
+        self.assertIs(self.tls.tls_verify_param(), False)
+
+    def test_environment_opt_out_wins_over_config(self):
+        config._config["flow"]["tls_verify"] = True
+        with patch.dict(os.environ, {"GFLOW_TLS_VERIFY": "0"}):
+            self.assertIs(self.tls.tls_verify_param(), False)
+
+    def test_ca_bundle_replaces_the_system_store(self):
+        with patch.dict(os.environ, {"GFLOW_TLS_CA_BUNDLE": "C:/certs/root.pem"}):
+            self.assertEqual(self.tls.tls_verify_param(), "C:/certs/root.pem")
+
+    def test_no_call_site_hardcodes_verify_false(self):
+        for relative in self.TLS_CALL_SITES:
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            with self.subTest(file=relative):
+                self.assertNotIn("verify=False", text)
+                self.assertIn("tls_verify_param()", text)
+
+
+class ManagementPageHardeningTests(unittest.TestCase):
+    """The dashboard escapes model data and ships a restrictive CSP."""
+
+    def test_model_table_escapes_every_field(self):
+        page = (ROOT / "static" / "manage.html").read_text(encoding="utf-8")
+        self.assertIn("function escapeHtml(", page)
+        start = page.index("function renderModels(")
+        body = page[start : start + 700]
+        for field in ("m.id", "m.type", "m.description"):
+            with self.subTest(field=field):
+                self.assertIn(f"escapeHtml({field})", body)
+
+    def test_management_response_sets_content_security_policy(self):
+        source = (ROOT / "src" / "lib.rs").read_text(encoding="utf-8")
+        self.assertIn("content-security-policy", source)
+        self.assertIn("default-src 'none'", source)
+        self.assertIn("object-src 'none'", source)
 
 
 if __name__ == "__main__":

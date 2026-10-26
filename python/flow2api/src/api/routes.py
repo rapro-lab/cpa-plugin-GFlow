@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from ..core.auth import AuthManager, verify_api_key_flexible
 from ..core.logger import debug_logger
 from ..core.model_resolver import get_base_model_aliases, resolve_model_name
+from ..core.tls import tls_verify_param
 from ..core.models import (
     ChatCompletionRequest,
     ChatMessage,
@@ -220,7 +221,7 @@ async def retrieve_image_data(url: str) -> Optional[bytes]:
                     "Referer": "https://flow.google.com/",
                 },
                 impersonate="chrome120",
-                verify=False,
+                verify=tls_verify_param(),
             )
             if response.status_code == 200 and response.content:
                 return response.content

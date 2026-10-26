@@ -11,6 +11,10 @@ labs_base_url = "https://flow.google.com"
 api_base_url = "https://flow.google.com"
 timeout = 120
 max_retries = 3
+# Verify TLS certificates for Flow and media downloads. Disable only behind a
+# TLS-inspecting proxy; prefer pointing tls_ca_bundle at its root certificate.
+tls_verify = true
+tls_ca_bundle = ""
 image_request_timeout = 40
 image_timeout_retry_count = 1
 image_timeout_retry_delay = 0.8

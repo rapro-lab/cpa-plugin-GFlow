@@ -119,6 +119,20 @@ class Config:
         self._config["flow"]["max_retries"] = normalized
 
     @property
+    def tls_verify(self) -> bool:
+        """Verify outbound TLS certificates (disable only behind a TLS proxy)."""
+        value = self._config.get("flow", {}).get("tls_verify", True)
+        if isinstance(value, str):
+            return value.strip().lower() not in {"0", "false", "no", "off", "disabled"}
+        return bool(value)
+
+    @property
+    def tls_ca_bundle(self) -> str:
+        """Optional PEM bundle used instead of the system trust store."""
+        value = self._config.get("flow", {}).get("tls_ca_bundle") or ""
+        return str(value).strip()
+
+    @property
     def flow_image_request_timeout(self) -> int:
         """图片生成单次 HTTP 请求超时(秒)。"""
         default_timeout = min(self.flow_timeout, 40)

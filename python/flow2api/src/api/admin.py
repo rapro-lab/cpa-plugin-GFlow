@@ -25,6 +25,7 @@ from ..core.config import (
     normalize_yescaptcha_task_type,
 )
 from ..core.models import Token
+from ..core.tls import tls_verify_param
 from ..core.browser_runtime_status import (
     fail_runtime_prepare,
     finish_runtime_prepare,
@@ -1588,7 +1589,7 @@ async def test_proxy_connectivity(
                 timeout=timeout_seconds,
                 impersonate="chrome120",
                 allow_redirects=True,
-                verify=False,
+                verify=tls_verify_param(),
             )
 
         elapsed_ms = int((time.time() - start_time) * 1000)

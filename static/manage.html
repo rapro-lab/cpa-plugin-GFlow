@@ -713,10 +713,14 @@
       }
     }
 
-    function escapeAccountHealth(value) {
+    function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, char => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       }[char]));
+    }
+
+    function escapeAccountHealth(value) {
+      return escapeHtml(value);
     }
 
     function accountHealthBadge(token) {
@@ -854,9 +858,9 @@
       }
       tbody.innerHTML = list.map(m => `
         <tr>
-          <td><code>${m.id}</code></td>
-          <td><span class="badge badge-success">${m.type}</span></td>
-          <td>${m.description}</td>
+          <td><code>${escapeHtml(m.id)}</code></td>
+          <td><span class="badge badge-success">${escapeHtml(m.type)}</span></td>
+          <td>${escapeHtml(m.description)}</td>
         </tr>
       `).join('');
     }

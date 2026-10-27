@@ -3,31 +3,56 @@ name: Build
 on:
   pull_request:
   push:
-    branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: gflow-build-${{ github.ref }}
+  group: gflow-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   PYTHONDONTWRITEBYTECODE: '1'
 
 jobs:
+  # Cheap feedback on every branch and pull request: no freezing, no Rust
+  # release build. test_bootstrap skips itself when no library is present.
+  test:
+    name: Test
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: python -B -m pip install -r requirements-dev.txt
+      - name: Worker tests
+        run: python -B -m unittest discover -s tests -p "test_*.py" -v
+      - name: Pinned upstream contract tests
+        env:
+          PYTHONPATH: python/flow2api
+        run: python -B -m unittest discover -s tests/upstream -p "test_*.py" -v
+      - name: Rust plugin tests
+        run: cargo test --locked
+
+  # Full freeze, embed and clean-install verification. Only on release tags and
+  # manual runs; Linux targets are intentionally not built.
   build:
     name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { goos: linux, goarch: amd64, runner: ubuntu-24.04, target: x86_64-unknown-linux-gnu }
-          - { goos: linux, goarch: arm64, runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
           - { goos: darwin, goarch: amd64, runner: macos-15-intel, target: x86_64-apple-darwin }
           - { goos: darwin, goarch: arm64, runner: macos-14, target: aarch64-apple-darwin }
           - { goos: windows, goarch: amd64, runner: windows-2022, target: x86_64-pc-windows-msvc }
@@ -43,7 +68,7 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - name: Install build and test dependencies
-        run: python -B -m pip install -r python/flow2api/requirements.txt "pyinstaller==6.16.0" "pillow>=10,<13" "send2trash>=1.8,<3"
+        run: python -B -m pip install -r requirements-dev.txt
       - name: Test, freeze Python, embed worker and verify clean plugin installation
         run: python -B .github/scripts/build.py --goos ${{ matrix.goos }} --goarch ${{ matrix.goarch }} --target ${{ matrix.target }}
       - uses: actions/upload-artifact@v4
@@ -69,7 +94,7 @@ jobs:
   release:
     name: Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [test, build]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

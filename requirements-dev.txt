@@ -1,0 +1,15 @@
+# Development, build and test dependencies.
+#
+# Runtime dependencies of the frozen worker live in
+# python/flow2api/requirements.txt; everything below is only needed to build
+# the plugin, run the test suites or package a release.
+
+-r python/flow2api/requirements.txt
+
+# Freeze the worker (must match the version validated by the CI test job).
+pyinstaller==6.22.3
+
+# Test-only. Pillow is imported by the pinned upstream suite; send2trash by the
+# extension sync pipeline. Neither is imported by the worker at runtime.
+pillow>=10,<13
+send2trash>=1.8,<3

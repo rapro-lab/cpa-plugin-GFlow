@@ -8,8 +8,10 @@ import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[2]
+# Must stay in sync with the build matrix in .github/workflows/build.yml.
+# Linux targets are intentionally not built.
 PLATFORMS = (("darwin", "amd64", "dylib"), ("darwin", "arm64", "dylib"),
-             ("linux", "amd64", "so"), ("linux", "arm64", "so"), ("windows", "amd64", "dll"))
+             ("windows", "amd64", "dll"))
 
 
 def gh(arguments, check=True):

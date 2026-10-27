@@ -23,6 +23,11 @@ def main():
     parser.add_argument("--goos", required=True, choices=["windows", "linux", "darwin"])
     parser.add_argument("--goarch", required=True, choices=["amd64", "arm64"])
     parser.add_argument("--target", required=True)
+    parser.add_argument(
+        "--lean", action="store_true",
+        help="omit playwright from the frozen worker (64 MB -> 25 MB on Windows); the legacy "
+             "'browser' captcha mode is unavailable in that build",
+    )
     options = parser.parse_args()
     temporary = BUILD / "tmp"
     temporary.mkdir(parents=True, exist_ok=True)
@@ -32,6 +37,8 @@ def main():
         PYTHONDONTWRITEBYTECODE="1", PIP_DISABLE_PIP_VERSION_CHECK="1",
         PIP_CACHE_DIR=str(BUILD / "pip-cache"), GFLOW_TEST_PYTHON=sys.executable,
     )
+    if options.lean:
+        environment["GFLOW_LEAN"] = "1"
     version = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
     reference = environment.get("GITHUB_REF", "")
     if reference.startswith("refs/tags/") and reference != "refs/tags/v" + version:
@@ -68,7 +75,8 @@ def main():
     evidence = {
         "version": version, "platform": options.goos + "/" + options.goarch,
         "worker_sha256": worker_digest, "self_contained_python": True,
-        "clean_install_smoke": "passed", "live_google_generation": "not requested",
+        "lean_worker": options.lean, "clean_install_smoke": "passed",
+        "live_google_generation": "not requested",
     }
     (distribution / f"verification-{options.goos}-{options.goarch}.json").write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(evidence), flush=True)

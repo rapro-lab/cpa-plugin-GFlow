@@ -32,7 +32,7 @@
     },
     "python/flow2api/src/api/__init__.py": {
       "upstream_path": "src/api/__init__.py",
-      "sha256": "9dbfbd8abdcb599a60c84266b61c5d1caf98ab54811301feae41892ff2d43bee"
+      "sha256": "c66b02cdeb2ac0e81f2a1edf153b5bca94b889f52d23e5505f3f8a394bab6d6d"
     },
     "python/flow2api/src/api/admin.py": {
       "upstream_path": "src/api/admin.py",
@@ -161,6 +161,7 @@
     "python/flow2api/src/services/browser_cookie_utils.py": "User-facing log/error messages localized to English (P3).",
     "python/flow2api/src/services/proxy_manager.py": "User-facing log/error messages localized to English (P3).",
     "python/flow2api/src/services/twocaptcha.py": "User-facing log/error messages localized to English (P3).",
-    "tests/upstream/test_veo_lite_support.py": "Generation error copy assertion localized to English, matching the localized user-facing message (P3)."
+    "tests/upstream/test_veo_lite_support.py": "Generation error copy assertion localized to English, matching the localized user-facing message (P3).",
+    "python/flow2api/src/api/__init__.py": "Package-level router imports are lazy (PEP 562): the stdio worker bundle can omit src.api.admin while api_router/admin_router keep working (P2)."
   }
 }

@@ -4,19 +4,19 @@
   "files": {
     "python/flow2api/src/core/model_resolver.py": {
       "upstream_path": "src/core/model_resolver.py",
-      "sha256": "cd83c270b6caf380858882f7ca9aeffca40f31f5605d528d03b159d88a62eeca"
+      "sha256": "367803bd5588bb7905ecead0a135850a5603d1d44f77f04c6fd89b88fca03b04"
     },
     "python/flow2api/src/services/flow_client.py": {
       "upstream_path": "src/services/flow_client.py",
-      "sha256": "db5d6184ca02b313d3857f9083db131fe170c4f0510eae75b00d29376836c452"
+      "sha256": "ca341f9c0b07b8479106b5be1efce0ef67028ec33724835a51d527593f443ad2"
     },
     "python/flow2api/src/services/flow_current.py": {
       "upstream_path": "src/services/flow_current.py",
-      "sha256": "3ec76b147cd56688a78a7bd002726a1f3021db2c333ce635672844177e61685d"
+      "sha256": "c35c30f36ecdbdb69a41cd07f3559e7105b1fcb1762287cdd3da948ecc6b2bd8"
     },
     "python/flow2api/src/services/flow_frontend.py": {
       "upstream_path": "src/services/flow_frontend.py",
-      "sha256": "b391853dd1c1cc06ea078072208f945c1abbf55953229b62a85543e807a85a34"
+      "sha256": "8ffb9710130167751cf11f378b18eebc8526ff00f70bb77bbbb3b3f3891ff7ee"
     },
     "tests/upstream/test_veo_lite_support.py": {
       "upstream_path": "tests/test_veo_lite_support.py",
@@ -28,7 +28,7 @@
     },
     "python/flow2api/src/services/protocol_login.py": {
       "upstream_path": "src/services/protocol_login.py",
-      "sha256": "0363b7e022d4a9f6dd231ad694052ea41051c86d4c2854f5fcf4a99cb75a9c63"
+      "sha256": "d830390311f0e973941e4eadafd5c80c2d808122ec61741426c6caca504d6e07"
     },
     "python/flow2api/src/api/__init__.py": {
       "upstream_path": "src/api/__init__.py",
@@ -36,11 +36,11 @@
     },
     "python/flow2api/src/api/admin.py": {
       "upstream_path": "src/api/admin.py",
-      "sha256": "5d222265d49c967964b847fb010e58b97ae816e8998e7adefc4e51b95bcfa56d"
+      "sha256": "3208f99678b1be5f5683c1b3c15db95436a6c1c75c752c29815f8605d73393e3"
     },
     "python/flow2api/src/api/routes.py": {
       "upstream_path": "src/api/routes.py",
-      "sha256": "4e5288347e8100773e38f5ea4f1717ddd8b786bb1e2fae86909a815aa6c8cf0f"
+      "sha256": "3a5b8c029af99ebff50c46469c625702007b19c485a6e4dd6fb35cf5326a7744"
     },
     "python/flow2api/src/core/__init__.py": {
       "upstream_path": "src/core/__init__.py",
@@ -60,11 +60,11 @@
     },
     "python/flow2api/src/core/config.py": {
       "upstream_path": "src/core/config.py",
-      "sha256": "4a0e1bb2f0679e9d488bf09d59e54fd9cbcc7d0124b913610405691e89ebb93d"
+      "sha256": "908758d250d7fd523e00a85c8099844b7150ce6c9a4325538c51f47381cba3bc"
     },
     "python/flow2api/src/core/database.py": {
       "upstream_path": "src/core/database.py",
-      "sha256": "88c8584579eeeeb4fdce8a5c0d7226e308e7bda466e3a2ccacca27d380a2aa45"
+      "sha256": "7ae726e8b7e00330e244d47155867df20d8add9e17f4dd242a767672b6b607c8"
     },
     "python/flow2api/src/core/logger.py": {
       "upstream_path": "src/core/logger.py",
@@ -84,7 +84,7 @@
     },
     "python/flow2api/src/services/browser_captcha.py": {
       "upstream_path": "src/services/browser_captcha.py",
-      "sha256": "06a85eefc084e0f48b16780488e937e97a3d32acd28bae0f1ed033d99e6625f5"
+      "sha256": "07b83203b5a693628a50bb7608a055e48ab49e5418b2cdc4792432a91a8e7f15"
     },
     "python/flow2api/src/services/browser_captcha_extension.py": {
       "upstream_path": "src/services/browser_captcha_extension.py",
@@ -92,7 +92,7 @@
     },
     "python/flow2api/src/services/browser_cookie_utils.py": {
       "upstream_path": "src/services/browser_cookie_utils.py",
-      "sha256": "4556f19f2d7c296e674bc941f6eaaa9db309daeb97e406c23109f50449efeca9"
+      "sha256": "dd96704207b369b2fb622a540851c2ac08236ea2ef18728b7f1479c9e561c5ab"
     },
     "python/flow2api/src/services/concurrency_manager.py": {
       "upstream_path": "src/services/concurrency_manager.py",
@@ -100,19 +100,19 @@
     },
     "python/flow2api/src/services/file_cache.py": {
       "upstream_path": "src/services/file_cache.py",
-      "sha256": "c5dec08883a426031d5b408b403f49646028c9c528d457b760b811f094033744"
+      "sha256": "54047e4dfc0205d0171fb295ec765ae361bf08c48f465d28ca45f912993a2607"
     },
     "python/flow2api/src/services/generation_handler.py": {
       "upstream_path": "src/services/generation_handler.py",
-      "sha256": "5cd66e72a1138f32a6dcfb8ba71c5503bfe6a4901f6caf291d0530d320adb577"
+      "sha256": "72abd9ab63984359551c7fc53448d3490abf43ac3eaebf272233c5d533f08785"
     },
     "python/flow2api/src/services/proxy_manager.py": {
       "upstream_path": "src/services/proxy_manager.py",
-      "sha256": "440f46caf9caa38e6b420c09528119c3b4c1d7090bbb04b552aa91772ca4bb43"
+      "sha256": "01bc777fddfe24c1e98133e0564b6bd5eca3d5d2b610ccda598a8a2c9037c240"
     },
     "python/flow2api/src/services/twocaptcha.py": {
       "upstream_path": "src/services/twocaptcha.py",
-      "sha256": "a197c428e0c3515707c23b8b56d449a72c6b7101aa969d6683a715e6d8c57a44"
+      "sha256": "a07ba1047e7e0fce9f9e72def41c08ae705b24931f7f7dd864aa5d3e757b34e8"
     }
   },
   "plugin_adapters": [

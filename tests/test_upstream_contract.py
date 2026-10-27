@@ -14,12 +14,22 @@ sys.path.insert(0, str(ROOT / "python/flow2api"))
 from src.services.flow_client import FlowClient
 
 
+def content_digest(path):
+    """Hash file content, not the checkout.
+
+    .gitattributes stores .py/.json with LF, but a Windows working tree can
+    still hold CRLF from an older edit; normalizing keeps the contract about
+    the source text instead of the platform's line endings.
+    """
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 class UpstreamContractTest(unittest.TestCase):
     def test_pinned_sources_are_unchanged(self):
         manifest = json.loads((ROOT / "python/flow2api/upstream.json").read_text(encoding="utf-8"))
         for name, record in manifest["files"].items():
             with self.subTest(file=name):
-                self.assertEqual(hashlib.sha256((ROOT/name).read_bytes()).hexdigest(),record["sha256"])
+                self.assertEqual(content_digest(ROOT / name), record["sha256"])
 
     def test_image_request_retains_upstream_fourteen_slots(self):
         client = FlowClient(None)

@@ -1,8 +1,8 @@
-# GFlow 项目控制协议 v1（插件 0.1.12）
+# GFlow project control protocol v1 (plugin 0.1.12)
 
-项目控制复用普通生成 API Key 的 `POST /v1/chat/completions`，无需管理密钥。专用模型 `gflow-project-control` 只执行控制操作，不进入图片/视频生成器。现有七种媒体模型及第三方未绑定请求继续使用原行为；客户端应从媒体选择器排除该控制模型。
+Project control reuses `POST /v1/chat/completions` with a regular generation API key; no management key is needed. The dedicated model `gflow-project-control` only performs control operations and never reaches the image/video generator. The existing seven media models and unbound third-party requests keep their current behavior; clients should exclude the control model from their media picker.
 
-请求必须 `stream: false`，包含一条 user 消息，content 为 JSON 字符串：
+The request must use `stream: false` and contain one user message whose content is a JSON string:
 
 ```json
 {
@@ -15,30 +15,30 @@
 }
 ```
 
-控制 JSON：
+Control JSON:
 
-- `version: 1`、`op`、`workspaceId` 必须提供；工作区与项目标识为 UUID。
-- `capabilities` 无需账号，返回 `models`、服务实例和 `projectBinding` 能力。没有账号时仍有基础 1K 目录；该响应不表示已经登录或可以成功生成。
-- `projects.list` 返回该工作区登记的项目，不扫描整个 Google 账号或其他工作区。
-- `projects.get` 需要本地 `projectId`，返回 `project` 及所属账号档位允许的模型参数。可附 `flowProjectId`（null 或 UUID）作诊断；UUID 必须与保存的绑定匹配，不参与路由。
-- `projects.create` 另需 `projectId`、`operationId`、`name`（1–128 字符）；可选 `preferredModel` 为七种基础媒体模型之一，默认 `gflow-nano-banana-2-lite`。选择账号后立即调用 Google Flow 的创建项目 RPC，不生成媒体。
+- `version: 1`, `op` and `workspaceId` are required; workspace and project identifiers are UUIDs.
+- `capabilities` needs no account and returns `models`, the service instance and the `projectBinding` capability. Without an account it still returns the base 1K catalog; that response does not mean a session is signed in or that generation will succeed.
+- `projects.list` returns the projects registered for that workspace and does not scan the whole Google account or other workspaces.
+- `projects.get` requires a local `projectId` and returns `project` plus the model parameters allowed by the owning account's tier. An optional `flowProjectId` (null or UUID) is diagnostic; the UUID must match the stored binding and takes no part in routing.
+- `projects.create` additionally requires `projectId`, `operationId` and `name` (1-128 characters); the optional `preferredModel` is one of the seven base media models and defaults to `gflow-nano-banana-2-lite`. Once an account is chosen it immediately calls Google Flow's create-project RPC and generates no media.
 
-成功响应采用标准 chat completion；解析 `choices[0].message.content` 内 JSON：
+Success responses use a standard chat completion; parse the JSON inside `choices[0].message.content`:
 
 ```json
 {
   "version": 1,
-  "instanceId": "服务持久化UUID",
-  "workspaceId": "客户端工作区UUID",
+  "instanceId": "service persistent UUID",
+  "workspaceId": "client workspace UUID",
   "projectBinding": true,
   "capabilities": {"projectBinding": true},
   "project": {
-    "id": "CutFlow本地项目UUID",
-    "name": "项目名",
-    "flowProjectId": "Google Flow项目UUID",
+    "id": "CutFlow local project UUID",
+    "name": "Project name",
+    "flowProjectId": "Google Flow project UUID",
     "state": "ready",
     "accountLabel": "a***@example.invalid",
-    "instanceId": "服务持久化UUID"
+    "instanceId": "service persistent UUID"
   },
   "models": [{
     "id": "gflow-nano-banana-2-lite",
@@ -51,24 +51,24 @@
 }
 ```
 
-控制协议校验、项目查找和绑定冲突错误仍返回标准 chat completion，content JSON 为 `{version:1,projectBinding:true,error:{code,message,status_code}}`；客户端必须先检查 error，再验证成功响应实例字段。这样兼容当前宿主把 executor 异常统一为 plugin_error 的 ABI。传输中断仍以 HTTP/宿主错误处理，不能据此自动重建项目。
+Control protocol validation, project lookup and binding-conflict errors still return a standard chat completion, with `{version:1,projectBinding:true,error:{code,message,status_code}}` as the content JSON; clients must check `error` first and only then validate the instance fields of a success response. This keeps compatibility with the current host, which collapses executor exceptions into `plugin_error` at the ABI. Transport interruptions are still handled as HTTP/host errors and must not be used to rebuild a project automatically.
 
-list 使用 `projects` 数组；create/get 使用单个 `project`。项目 state 为 `creating|ready|failed|creation_unknown`，失败可含 `error:{code,message}`，不会返回 Cookie、密钥、账号内部 ID 或原始邮箱。2K 需要 Pro，4K 需要 Ult；参数目录反映已知账号档位，真实生成仍需平台验证与额度。
+`list` uses a `projects` array; `create`/`get` use a single `project`. Project `state` is `creating|ready|failed|creation_unknown`; failures may carry `error:{code,message}`. Cookies, keys, internal account IDs and raw email addresses are never returned. 2K requires Pro and 4K requires Ult; the parameter catalog reflects the known account tier, and real generation still needs platform validation and credits.
 
-项目内生成仍用原媒体模型，在标准请求顶层同时附带：
+Generation inside a project still uses the original media model, adding these fields at the top level of the standard request:
 
 ```json
 {
-  "gflow_workspace_id": "客户端工作区UUID",
-  "gflow_project_id": "真实Google Flow项目UUID",
-  "gflow_instance_id": "服务持久化UUID"
+  "gflow_workspace_id": "client workspace UUID",
+  "gflow_project_id": "real Google Flow project UUID",
+  "gflow_instance_id": "service persistent UUID"
 }
 ```
 
-`gflow_project_id` 是 `flowProjectId`，不是本地项目 ID。三个字段必须全部存在且与服务记录匹配。项目账号停用、移除、身份变化、档位不足或验证路由不可用时失败，禁止换账号、项目池回退或创建替代项目。图片与视频、流式与非流式共享该规则，异常和取消后清理请求上下文。账号刷新返回新对象后重新验证启用开关与档位；固定请求总会执行非阻塞并发预检，这一步不额外占用上游槽位。额度是否足够仍以 Google Flow 实际响应为准，平台额度错误不会触发换账号。连续改图由客户端显式提供选中图的参考图片，项目绑定不会把其他会话历史自动作为参考。
+`gflow_project_id` is the `flowProjectId`, not the local project ID. All three fields must be present and must match the service record. When the project's account is disabled, removed or has changed identity, its tier is insufficient, or the verification route is unavailable, the request fails; switching accounts, falling back to the project pool or creating a replacement project is forbidden. Images and videos, streaming and non-streaming share this rule, and the request context is cleared after errors and cancellations. When an account refresh returns a new object, the enabled flag and tier are re-validated; fixed requests always run a non-blocking concurrency preflight that consumes no extra upstream slot. Whether the quota is sufficient still depends on Google Flow's actual response, and platform quota errors never trigger an account switch. For consecutive image edits the client explicitly supplies the selected image as the reference; project binding never turns other session history into a reference automatically.
 
-同工作区 operationId 与项目请求内容持久化幂等；完全相同的重复请求返回原记录，参数冲突拒绝。RPC 已开始后若超时、取消或丢失回执，状态是 creation_unknown，不自动重建，避免产生重复云端项目。服务重启把未完成 creating 转为 creation_unknown。已确认的失败记录也不会自动重试；需要用户核查后新建项目。云端重命名、删除、迁移及扫描恢复不在协议 v1 中。
+Operation ids and project request content are idempotent per workspace: an identical duplicate returns the original record, and conflicting parameters are rejected. If the RPC has already started and then times out, is cancelled or loses its receipt, the state is `creation_unknown` and nothing is rebuilt automatically, avoiding duplicate cloud projects. On restart the service turns unfinished `creating` records into `creation_unknown`. Confirmed failures are not retried automatically either; the user must review and create a new project. Cloud rename, delete, migration and scan-based recovery are out of scope for protocol v1.
 
-SQLite 在原 flow.db 增加元数据与 CutFlow 项目表；旧 projects 记录 purpose 默认 pool，新专属项目为 cutflow，轮询客户端只能看到 pool。上游 27 个固定源码文件及 Google RPC 实现保持原哈希。
+SQLite adds metadata and CutFlow project tables to the existing flow.db; legacy `projects` records default to purpose `pool` while new dedicated projects are `cutflow`, so polling clients only see `pool`. The 27 pinned upstream source files and the Google RPC implementation keep their original hashes.
 
-权限边界：普通 API Key 代表该 EasyCPA 实例的生成访问权限；工作区 UUID 用于数据分组，不构成额外用户认证，不能将此协议描述为多租户安全隔离。现有 /v0/management 路由仍需独立管理认证。真实宿主路由、真实账号创建及真实媒体生成应单独验收，离线测试不证明它们已验证。
+Permission boundary: a regular API key represents generation access to that EasyCPA instance; the workspace UUID groups data and is not additional user authentication, so this protocol must not be described as multi-tenant isolation. The existing `/v0/management` routes still require separate management authentication. Real host routing, real account creation and real media generation must be accepted separately; offline tests do not prove they are verified.

@@ -1,12 +1,12 @@
 # GFlow v0.1.20
 
-修正媒体回传与模型能力校验，并增加不含凭据的浏览器阶段诊断。
+Fixes media return and model capability validation, and adds credential-free browser stage diagnostics.
 
-- 内联媒体按128MiB解码上限读取，包含文件读取期间增长的情况；减少大型媒体解析开销。
-- 视频参考图上限按实际模型和时长发布，不支持参考图的Quality 8秒请求明确拒绝，不再静默丢图。
-- 浏览器启动、页面加载或会话操作异常保留安全的阶段与原因分类；不记录Cookie、令牌、验证码参数或完整敏感异常，不改变验证流程与重试策略。
-- 保留0.1.19的宿主SSE格式、异步回传、固定账号及项目绑定。
+- Inline media is read with a 128 MiB decode cap, including growth during the file read; reduces parsing overhead for large media.
+- Video reference-image limits are published per actual model and duration; Quality 8-second requests that do not support reference images are rejected explicitly instead of silently dropping the image.
+- Browser launch, page load and session operation failures keep safe stage and reason classification; cookies, tokens, captcha parameters and full sensitive exceptions are not logged, and the verification flow and retry policy are unchanged.
+- Keeps the 0.1.19 host SSE format, asynchronous return, fixed account and project binding.
 
-实机边界：CutFlow 0.6.5与GFlow 0.1.19已通过真实项目创建和旧图仅下载恢复；一次新图请求在109.1秒后返回Failed to obtain reCAPTCHA token，未获得作品。普通Chrome本地空白页启动检查通过，不能证明Google验证页面可用。新图片、连续改图仍待完成真实验收；本版不宣称已修复上游验证。
+Real-machine boundary: CutFlow 0.6.5 with GFlow 0.1.19 passed real project creation and old-image download-only recovery; one new image request returned "Failed to obtain reCAPTCHA token" after 109.1 seconds and produced no work. A local blank-page launch check in ordinary Chrome passed, which does not prove the Google verification page works. New images and consecutive edits still need real acceptance; this release does not claim to have fixed upstream verification.
 
-Windows下载gflow_0.1.20_windows_amd64.zip，解压得到gflow.dll。退出EasyCLIProxyAPI代理后替换插件，保留gflow-data，再打开代理。CutFlow建议配套0.6.6。不要删除账号、项目或旧作品来重试。
+On Windows download gflow_0.1.20_windows_amd64.zip and extract gflow.dll. Quit the EasyCLIProxyAPI proxy, replace the plugin keeping gflow-data, then open the proxy again. CutFlow 0.6.6 is the recommended companion. Do not delete accounts, projects or previous work to retry.

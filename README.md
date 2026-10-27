@@ -1,95 +1,95 @@
 # GFlow
 
-在 EasyCPA 的同一个端口使用 Google Flow 图片 / 视频模型，默认端口为 8317。
+Use Google Flow image and video models on the same EasyCPA port (8317 by default).
 
-## CutFlow 项目与会话绑定（v0.1.12）
+## CutFlow project and session binding (v0.1.12)
 
-新增普通生成 API Key 可调用的 `gflow-project-control` 控制入口；创建、查询项目不调用图片或视频模型，不需要客户端保存管理密钥。CutFlow 新建项目可绑定真实 Google Flow 项目，项目内会话共用固定账号和项目，连续改图由客户端显式传入所选参考图。账号失效或档位不符时不会偷偷换账号或轮询项目。控制模型应从图片/视频选择器中隐藏；七种媒体模型保持不变。
+Adds a `gflow-project-control` control endpoint that a regular generation API key can call. Creating and querying projects does not call image or video models and does not require the client to store the management key. A new CutFlow project can bind a real Google Flow project; sessions inside that project share a fixed account and project, and consecutive image edits pass the chosen reference image explicitly from the client. When an account is invalid or its tier does not match, GFlow never silently switches accounts or rotates projects. The control model should be hidden from image/video pickers; the seven media models are unchanged.
 
-项目创建使用 SQLite 持久化幂等，超时、取消或回执丢失标记“创建待核查”，不自动重建。旧项目池迁移保留；CutFlow 专属项目不参与其他客户端轮询。[项目控制协议、参数能力与权限边界](docs/project-control-v1.md)。
+Project creation is idempotent and persisted in SQLite. A timeout, cancellation or lost receipt marks the request "creation pending review" instead of rebuilding it automatically. Legacy project pools keep migrating; CutFlow-dedicated projects do not join other clients' rotation. See [project control protocol, parameter capabilities and permission boundaries](docs/project-control-v1.md).
 
-## 添加账号：推荐浏览器同步
+## Adding an account: browser sync (recommended)
 
-1. 在 GFlow 点击“添加账号”，点击“复制下载地址”，在 Chrome / Edge 地址栏粘贴并回车，下载 **GFlow 登录助手** 并解压。在 Chrome / Edge 扩展管理页开启“开发者模式”，加载解压后的文件夹。
-2. 在同一窗口点击“复制扩展配置”。打开浏览器扩展，粘贴配置，填写当前 Google 邮箱。
-3. 在该浏览器登录 Google Flow，点击扩展的“保存并同步”，返回 GFlow 刷新账号列表。
+1. In GFlow click "Add account", then "Copy download address", paste it into the Chrome / Edge address bar and press Enter, download the **GFlow login helper** and extract it. Enable "Developer mode" on the Chrome / Edge extensions page and load the extracted folder.
+2. In the same window click "Copy extension configuration". Open the browser extension, paste the configuration and fill in the current Google email.
+3. Sign in to Google Flow in that browser, click "Save and sync" in the extension, then go back to GFlow and refresh the account list.
 
-EasyCPA 内嵌窗口限制直接下载和新窗口跳转，因此下载和源码入口改为复制地址；下载地址直接使用本机已安装的扩展包，无需访问 GitHub。复制被限制时会显示可手动复制的地址。
+The EasyCPA embedded window blocks direct downloads and new-window navigation, so the download and source entries copy an address instead; the download address uses the extension package already installed on this machine and does not need GitHub. When copying is restricted, the address is shown for manual copying.
 
-之后可一键同步，或每 60 分钟自动同步；自动同步需要浏览器运行。多个 Google 账号请使用不同的浏览器配置文件。
+Afterwards you can sync with one click, or automatically every 60 minutes; automatic sync requires the browser to be running. Use a different browser profile for each Google account.
 
-- [扩展 GitHub 与安装说明](https://github.com/daodeqing/cpa-plugin-GFlow/tree/main/browser-extension)
-- [直接下载 GFlow 登录助手 ZIP](https://github.com/daodeqing/cpa-plugin-GFlow/raw/refs/heads/main/downloads/GFlow-browser-extension.zip)
+- [Extension GitHub and install instructions](https://github.com/daodeqing/cpa-plugin-GFlow/tree/main/browser-extension)
+- [Download the GFlow login helper ZIP directly](https://github.com/daodeqing/cpa-plugin-GFlow/raw/refs/heads/main/downloads/GFlow-browser-extension.zip)
 
-## 扩展同步失败时
+## When extension sync fails
 
-扩展最新版为 **1.3.4**。从“添加账号”重新下载并覆盖原扩展文件夹，在 Chrome / Edge 扩展管理页点击“重新加载”；原连接配置会保留。仓库更新不会自动更新浏览器里另外解压的旧文件夹。
+The latest extension version is **1.3.4**. Download it again from "Add account" and overwrite the previous extension folder, then click "Reload" on the Chrome / Edge extensions page; the existing connection configuration is preserved. Repository updates do not automatically update a separate older folder extracted in the browser.
 
-1.3.4 新增 `webRequest` 权限，只在本次同步创建的 Flow 标签里读取额度请求实际携带的 Cookie，并查询一次额度；同步结束即移除监听、关闭临时标签。更新后需重新加载扩展。浏览器与后台分别校验，只有后台通过且账号保存成功才显示成功。
+1.3.4 adds the `webRequest` permission: it reads the cookies actually carried by the quota request only inside the Flow tab created for that sync, and queries the quota once; the listener is removed and the temporary tab closed when the sync ends. Reload the extension after updating. The browser and the backend validate separately, and success is shown only when the backend passes and the account is saved.
 
-错误提示和日志区分本机连接、Google 认证、超时、接口变化及项目准备失败；不会输出 Cookie 或密钥。真实账号同步和保存后的后台额度查询已在本机验证通过；真实生成尚未验证。
+Error messages and logs distinguish local connection, Google authentication, timeout, API changes and project preparation failures; cookies and keys are never printed. Real account sync and the backend quota query after saving have been verified on this machine; real generation has not been verified.
 
-## 支持的模型与调用方式
+## Supported models and how to call them
 
-提供 **7 个核心基础模型（媒体选择器显示这 7 个，另有项目控制专用入口）**，彻底避免数十个变体堆满客户端下拉列表。客户端在界面上选择功能参数时，后台**自动调配**到底层笛卡尔积模型：
+GFlow exposes **7 core models (the media picker shows these 7, plus a control-only entry)**, which avoids dozens of variants flooding the client dropdown. When the client picks a feature parameter in the UI, the backend **auto-dispatches** to the underlying cartesian product model:
 
-### 1. 客户端选择的核心模型（7 个媒体模型）
-- **图片模型 (3 个)**：
-  - `gflow-nano-banana-pro`：Nano Banana Pro（GEM_PIX_2，支持 1:1, 16:9, 9:16, 4:3, 3:4 与 1K/2K/4K 自动调配）
-  - `gflow-nano-banana-2-lite`：Nano Banana 2 Lite（HARBOR_SEAL，支持 5 种比例与 1K/2K/4K 自动调配）
-  - `gflow-nano-banana-2.1`：Nano Banana 2.1（BELUGA，支持 5 种比例与 1K/2K/4K 自动调配）
-- **视频模型 (4 个)**：
-  - `gflow-omni-1.1-flash`：Omni 1.1 Flash（支持 4s/6s/8s/10s 时长与横/竖屏自动调配，原生支持多张参考图）
-  - `gflow-veo-3.1-lite`：Veo 3.1 - Lite（支持 4s/6s/8s 时长与横/竖屏自动调配）
-  - `gflow-veo-3.1-fast`：Veo 3.1 - Fast（支持 4s/6s/8s 时长与横/竖屏自动调配）
-  - `gflow-veo-3.1-quality`：Veo 3.1 - Quality（支持 4s/6s/8s 时长与横/竖屏自动调配）
+### 1. Core models selected by the client (7 media models)
+- **Image models (3)**:
+  - `gflow-nano-banana-pro`: Nano Banana Pro (GEM_PIX_2, auto-dispatch across 1:1, 16:9, 9:16, 4:3, 3:4 and 1K/2K/4K)
+  - `gflow-nano-banana-2-lite`: Nano Banana 2 Lite (HARBOR_SEAL, auto-dispatch across 5 aspect ratios and 1K/2K/4K)
+  - `gflow-nano-banana-2.1`: Nano Banana 2.1 (BELUGA, auto-dispatch across 5 aspect ratios and 1K/2K/4K)
+- **Video models (4)**:
+  - `gflow-omni-1.1-flash`: Omni 1.1 Flash (auto-dispatch across 4s/6s/8s/10s durations and landscape/portrait, with native support for multiple reference images)
+  - `gflow-veo-3.1-lite`: Veo 3.1 - Lite (auto-dispatch across 4s/6s/8s durations and landscape/portrait)
+  - `gflow-veo-3.1-fast`: Veo 3.1 - Fast (auto-dispatch across 4s/6s/8s durations and landscape/portrait)
+  - `gflow-veo-3.1-quality`: Veo 3.1 - Quality (auto-dispatch across 4s/6s/8s durations and landscape/portrait)
 
-### 2. 功能选择自动调配 (Auto-dispatch)
-当客户端选择上述 7 个模型时，后台会自动根据请求携带的参数解析调配：
-- **图片调配**：根据客户端选择的 `aspectRatio`（1:1、16:9、9:16、4:3、3:4）或 OpenAI `size`（如 1024x1024、1792x1024 等），以及分辨率 `imageSize`（1K、2K、4K）或 OpenAI `quality`（standard、medium、hd、high），自动调配到底层 45 个组合之一。未指定时默认使用 16:9 标准 1K。
-- **视频调配**：根据客户端选择的时长（4s、6s、8s、10s）与方向（16:9 landscape、9:16 portrait），以及是否有附带参考图（自动走 I2V/R2V），自动调配到底层 26 个视频组合之一。未指定时默认使用 8s 16:9 横屏。
+### 2. Feature-based auto-dispatch
+When the client selects one of the 7 models above, the backend resolves the dispatch from the parameters in the request:
+- **Image dispatch**: from the client's `aspectRatio` (1:1, 16:9, 9:16, 4:3, 3:4) or the OpenAI `size` (such as 1024x1024, 1792x1024), and from `imageSize` (1K, 2K, 4K) or the OpenAI `quality` (standard, medium, hd, high), it dispatches to one of 45 underlying combinations. When nothing is specified it defaults to 16:9 standard 1K.
+- **Video dispatch**: from the chosen duration (4s, 6s, 8s, 10s), the orientation (16:9 landscape, 9:16 portrait) and whether a reference image is attached (which switches to I2V/R2V automatically), it dispatches to one of 26 underlying video combinations. When nothing is specified it defaults to 8s 16:9 landscape.
 
-### 3. 底层保留的笛卡尔积变体（支持直接调用与函数调用）
-底层完整保留所有排列组合，若第三方客户端或智能体直接传具体变体名或调用函数，后台依然直接匹配执行：
-- **图片变体（3 基础 × 5 比例 × 3 分辨率 = 45 种）**：
-  - 例如：`gflow-nano-banana-2.1-square-4k`（1:1 4K）、`gflow-nano-banana-pro-portrait-2k`（9:16 2K）、`gflow-nano-banana-2-lite-four-three`（4:3 1K）等。
-- **视频变体（Veo 3 族 × 3 时长 × 2 方向 + Omni 4 时长 × 2 方向 = 26 种）**：
-  - 例如：`gflow-veo-3.1-fast-4s-portrait`（4s 竖屏）、`gflow-omni-1.1-flash-10s-landscape`（10s 横屏）等。
-- 后台同时兼容带历史 Gemini 别名（如 `gflow-gemini-3.1-flash-image-square`）以及数字比例命名（如 `-16-9`、`-1-1`）。
+### 3. Underlying cartesian variants (direct and function calls still work)
+Every combination is still exposed underneath, so a third-party client or agent that sends a concrete variant name or calls it as a function is matched directly:
+- **Image variants (3 base × 5 aspect ratios × 3 resolutions = 45)**:
+  - Examples: `gflow-nano-banana-2.1-square-4k` (1:1 4K), `gflow-nano-banana-pro-portrait-2k` (9:16 2K), `gflow-nano-banana-2-lite-four-three` (4:3 1K).
+- **Video variants (Veo 3 family × 3 durations × 2 orientations + Omni 4 durations × 2 orientations = 26)**:
+  - Examples: `gflow-veo-3.1-fast-4s-portrait` (4s portrait), `gflow-omni-1.1-flash-10s-landscape` (10s landscape).
+- The backend also accepts legacy Gemini aliases (such as `gflow-gemini-3.1-flash-image-square`) and numeric aspect names (such as `-16-9`, `-1-1`).
 
-## 也可以手动粘贴
+## Manual paste also works
 
-GFlow → 添加账号 → “方式二：手动粘贴”。复制完整 Cookie 或 Cookie JSON，也接受 Session Token；新版 Flow 若没有旧 Token 字段，请优先用扩展。展开输入框下方的帮助可查看 F12 获取步骤。
+GFlow → Add account → "Option 2: paste manually". Paste a full cookie or cookie JSON; a session token is also accepted. If a recent Flow build no longer has the old token field, prefer the extension. Expand the help below the input to see the F12 steps.
 
-## 首次安装设置
+## First install
 
-从插件商店安装后，直接打开 GFlow。正式发行包在动态库内包含独立 Python 后台、Python 运行时和所需依赖，不需要安装 Python，也不会调用开发者电脑上的源码目录。
+After installing from the plugin store, just open GFlow. The official package embeds a standalone Python backend, the Python runtime and its dependencies inside the dynamic library; it needs no Python installation and never reads the developer's source directory.
 
-在同一浏览器登录 CPA 管理中心并记住登录后，GFlow 静态页面从同源的 `cli-proxy-auth` 读取管理凭据，兼容管理中心当前的混淆存储格式。凭据仅发送到当前宿主的 `/v0/management/plugins/gflow/`，不再通过公开资源接口返回管理密钥。不支持共享浏览器存储的桌面嵌入窗口，可展开“手动连接管理中心”；临时密钥只保存在当前页面内存，关闭页面即清除。
+After signing in to the CPA management console in the same browser and choosing "remember me", the GFlow static page reads the management credential from the same-origin `cli-proxy-auth`, matching the console's current obfuscated storage format. The credential is only sent to `/v0/management/plugins/gflow/` on the current host; the management key is no longer returned through a public resource endpoint. Desktop embedded windows that do not share browser storage can expand "connect to the management console manually"; the temporary key stays in page memory only and is cleared when the page closes.
 
-默认数据目录为已安装插件动态库旁的 `gflow-data`，包含数据库、媒体缓存、后台日志和按版本释放的运行时。高级设置可通过 `data_dir` 指向已有数据目录；升级前请备份该目录。旧版 `management_key` 和 `python_path` 配置不再使用。软件不会自动读取开发者旧目录或其他安装的账号数据。
+The default data directory is `gflow-data` next to the installed plugin library, holding the database, media cache, backend logs and the runtime released per version. Advanced setups can point `data_dir` at an existing data directory; back it up before upgrading. The old `management_key` and `python_path` settings are no longer used. GFlow never reads the developer's old directories or another installation's account data.
 
-Windows 宿主使用临时动态库副本时，默认数据目录为内核可执行文件旁的 `plugins/gflow/gflow-data`，不会将账号保存到临时进程目录。v0.1.11 起管理状态读取与生成使用独立请求通道；控制台自动刷新只读取状态和账号，不覆盖尚未保存的设置。
+When the Windows host uses a temporary copy of the library, the default data directory is `plugins/gflow/gflow-data` next to the core executable, so accounts are not written into the temporary process directory. Since v0.1.11, reading management state and running generations use separate request channels; the console's automatic refresh only reads status and accounts and never overwrites unsaved settings.
 
-Chrome/Edge 等浏览器不随插件打包。选择本地浏览器验证码方式时仍需可用的浏览器；也可以配置受支持的验证码服务。插件后台通过标准输入输出与宿主通信，不新增对外业务端口。
+Chrome/Edge and other browsers are not bundled with the plugin. Choosing the local-browser captcha method still requires a working browser; a supported captcha service can be configured instead. The plugin backend talks to the host over stdin/stdout and adds no external business port.
 
-公开资源接口只保留管理页面和静态登录助手 ZIP。缓存媒体的人工下载走管理鉴权接口 `/v0/management/plugins/gflow/api/media?file=<文件名>`；生成响应中的本地图片和视频转为 data URI，不要求客户端持有管理密钥。单个媒体的内联上限为 128 MiB；超出时明确提示从鉴权接口取回缓存，不重新提交生成。
+The public resource endpoints expose only the management page and the static login helper ZIP. Manual download of cached media goes through the authenticated management endpoint `/v0/management/plugins/gflow/api/media?file=<filename>`; local images and videos in generation responses are returned as data URIs, so clients do not need the management key. Inline media is capped at 128 MiB; above that GFlow clearly points at the authenticated endpoint instead of resubmitting the generation.
 
-“复制扩展配置”包含管理凭据，仅粘贴到本机 GFlow 登录助手。扩展使用 chrome.storage.local 保存，不通过 Chrome 同步；清除配置可移除保存的数据。不要公开 Cookie 或扩展连接配置。
+"Copy extension configuration" contains the management credential; paste it only into the local GFlow login helper. The extension stores it in `chrome.storage.local` and does not sync it through Chrome; clearing the configuration removes the stored data. Never publish cookies or the extension connection configuration.
 
-## 免费和收费范围
+## Free and paid scope
 
-GFlow 与浏览器扩展本身免费。Google Flow 订阅和生成积分、付费打码平台、代理费用另计。本地浏览器打码免平台服务费，但需可用的浏览器环境。
+GFlow and the browser extension are free. Google Flow subscriptions and generation credits, paid captcha platforms and proxy costs are separate. Local-browser captcha has no platform fee but needs a working browser environment.
 
-添加 / 同步账号会验证登录态、查询额度，并可能创建项目；不会自动生成图片或视频。同步不会启用已停用的账号。
+Adding or syncing an account validates the session, queries the quota and may create a project; it never generates images or videos automatically. Sync never enables a disabled account.
 
-## 验证范围
+## Verification scope
 
-已用虚构数据验证扩展 Cookie 范围、同步鉴权、账号新增与更新、重复任务合并及页面连接。已在本机安装扩展并核对文件版本。2026 年 10 月 16 日本机验证：登录助手 1.3.4 真实同步成功，账号已保存并启用；后台使用已保存登录态独立查询额度成功。真实图片 / 视频生成尚未验证。
+Extension cookie scope, sync authentication, account create/update, duplicate task merging and page connectivity have been verified with synthetic data. The extension was installed locally and its file versions were checked. Verified on this machine on 16 October 2026: login helper 1.3.4 completed a real sync, the account was saved and enabled, and the backend queried the quota independently using the saved session. Real image/video generation has not been verified.
 
-## 来源
+## Sources
 
-GFlow 内嵌的模型适配代码参考 [TheSmallHanCat/flow2api](https://github.com/TheSmallHanCat/flow2api)，保留其 MIT 声明。GFlow 登录助手独立实现，未复制未声明许可证的第三方浏览器扩展源码。
+The model adapter code embedded in GFlow is based on [TheSmallHanCat/flow2api](https://github.com/TheSmallHanCat/flow2api), keeping its MIT notice. The GFlow login helper is an independent implementation and does not copy third-party browser extension source that carries no license declaration.
 
 
 ### Generation lifecycle repair

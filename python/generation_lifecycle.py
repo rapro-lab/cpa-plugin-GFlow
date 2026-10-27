@@ -180,9 +180,9 @@ class GenerationLifecycle:
                     finally:
                         active.clear()
         except asyncio.TimeoutError:
-            self.fail(req_id, stream, 'generation_timeout', 'GFlow 生成超时，已停止浏览器重试；请检查 Google Flow 登录、网络和验证码状态')
+            self.fail(req_id, stream, 'generation_timeout', "GFlow generation timed out and browser retries stopped; check the Google Flow login, network and captcha state")
         except asyncio.CancelledError:
-            self.fail(req_id, stream, 'cancelled', 'GFlow 已停止当前生成任务并回收专用浏览器；已提交的云端费用以平台为准')
+            self.fail(req_id, stream, 'cancelled', "GFlow stopped the generation task and released the dedicated browser; any submitted cloud cost is determined by the platform")
         except Exception as error:
             self.fail(req_id, stream, 'generation_error', str(error)[:400])
         finally:

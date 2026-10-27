@@ -1135,7 +1135,7 @@ class Database:
         query += " LIMIT 1"
         cursor = await db.execute(query, params)
         if await cursor.fetchone():
-            raise ValueError(f"账号已存在: {identities[0]}")
+            raise ValueError(f"Account already exists: {identities[0]}")
 
     # Token operations
     async def add_token(self, token: Token) -> int:

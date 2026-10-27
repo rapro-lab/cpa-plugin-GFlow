@@ -4,23 +4,23 @@
   "files": {
     "python/flow2api/src/core/model_resolver.py": {
       "upstream_path": "src/core/model_resolver.py",
-      "sha256": "674e174fd02e235b1c22925e89a428f71b636f8f4c67b0ca52c4cad1ae06e588"
+      "sha256": "cd83c270b6caf380858882f7ca9aeffca40f31f5605d528d03b159d88a62eeca"
     },
     "python/flow2api/src/services/flow_client.py": {
       "upstream_path": "src/services/flow_client.py",
-      "sha256": "c92de27c40a590602a58a5a7e232d43ca3791da723b264fffe02f193a46261aa"
+      "sha256": "db5d6184ca02b313d3857f9083db131fe170c4f0510eae75b00d29376836c452"
     },
     "python/flow2api/src/services/flow_current.py": {
       "upstream_path": "src/services/flow_current.py",
-      "sha256": "93b4d0d04baf3db6fe7e43c367df7d5ef20ce402a5a2de0eb2d47f271e3948f7"
+      "sha256": "3ec76b147cd56688a78a7bd002726a1f3021db2c333ce635672844177e61685d"
     },
     "python/flow2api/src/services/flow_frontend.py": {
       "upstream_path": "src/services/flow_frontend.py",
-      "sha256": "2ba47e8ec0eacd32c4985ec3c7e248bda9b18148acf2645d287ba4c58640ce39"
+      "sha256": "b391853dd1c1cc06ea078072208f945c1abbf55953229b62a85543e807a85a34"
     },
     "tests/upstream/test_veo_lite_support.py": {
       "upstream_path": "tests/test_veo_lite_support.py",
-      "sha256": "3c84293c88702a7b8761ee94a4288dd707ad81921ab2f06cac0de678e74fdcdd"
+      "sha256": "5a7be7bdafbf59030162dbf89aa909d8c29487bc69c99aa14604b8a3a295be72"
     },
     "python/flow2api/src/main.py": {
       "upstream_path": "src/main.py",
@@ -28,7 +28,7 @@
     },
     "python/flow2api/src/services/protocol_login.py": {
       "upstream_path": "src/services/protocol_login.py",
-      "sha256": "206dae3259cd75f4dc054c587f6c47a857285075cd0a8aaa4b15b051850730b9"
+      "sha256": "0363b7e022d4a9f6dd231ad694052ea41051c86d4c2854f5fcf4a99cb75a9c63"
     },
     "python/flow2api/src/api/__init__.py": {
       "upstream_path": "src/api/__init__.py",
@@ -36,11 +36,11 @@
     },
     "python/flow2api/src/api/admin.py": {
       "upstream_path": "src/api/admin.py",
-      "sha256": "bf6c245c49b0e7b5fcc4692682544daf69a016dd7b9a4a1f755acfa6c6edd84c"
+      "sha256": "5d222265d49c967964b847fb010e58b97ae816e8998e7adefc4e51b95bcfa56d"
     },
     "python/flow2api/src/api/routes.py": {
       "upstream_path": "src/api/routes.py",
-      "sha256": "159a90e7b5cf7dbf5e368a9dd179dc808053769eab399f6b281b7bd7279f3d66"
+      "sha256": "4e5288347e8100773e38f5ea4f1717ddd8b786bb1e2fae86909a815aa6c8cf0f"
     },
     "python/flow2api/src/core/__init__.py": {
       "upstream_path": "src/core/__init__.py",
@@ -60,11 +60,11 @@
     },
     "python/flow2api/src/core/config.py": {
       "upstream_path": "src/core/config.py",
-      "sha256": "5ff039f001077fb3d87b5909e7e975daa530b2152f903c2e1d2c4acdab19c485"
+      "sha256": "4a0e1bb2f0679e9d488bf09d59e54fd9cbcc7d0124b913610405691e89ebb93d"
     },
     "python/flow2api/src/core/database.py": {
       "upstream_path": "src/core/database.py",
-      "sha256": "d062eb5070fc5925d6c9953e8f01ce4d396f80440d6b494347780f128de13cd4"
+      "sha256": "88c8584579eeeeb4fdce8a5c0d7226e308e7bda466e3a2ccacca27d380a2aa45"
     },
     "python/flow2api/src/core/logger.py": {
       "upstream_path": "src/core/logger.py",
@@ -84,7 +84,7 @@
     },
     "python/flow2api/src/services/browser_captcha.py": {
       "upstream_path": "src/services/browser_captcha.py",
-      "sha256": "0652ca0a32c8e637515b354513f2fad0bc4b8f0964cb6d6471836b5baccf94f0"
+      "sha256": "06a85eefc084e0f48b16780488e937e97a3d32acd28bae0f1ed033d99e6625f5"
     },
     "python/flow2api/src/services/browser_captcha_extension.py": {
       "upstream_path": "src/services/browser_captcha_extension.py",
@@ -92,7 +92,7 @@
     },
     "python/flow2api/src/services/browser_cookie_utils.py": {
       "upstream_path": "src/services/browser_cookie_utils.py",
-      "sha256": "80cf5739b070c81045430937aeac6cfcf3100602185e60c6b28d742e12d8db16"
+      "sha256": "4556f19f2d7c296e674bc941f6eaaa9db309daeb97e406c23109f50449efeca9"
     },
     "python/flow2api/src/services/concurrency_manager.py": {
       "upstream_path": "src/services/concurrency_manager.py",
@@ -100,19 +100,19 @@
     },
     "python/flow2api/src/services/file_cache.py": {
       "upstream_path": "src/services/file_cache.py",
-      "sha256": "efb84f51ad99078bc15b9b3710d26cb6064a6a7994f1bc60f38c8938872a58f7"
+      "sha256": "c5dec08883a426031d5b408b403f49646028c9c528d457b760b811f094033744"
     },
     "python/flow2api/src/services/generation_handler.py": {
       "upstream_path": "src/services/generation_handler.py",
-      "sha256": "fb37f6680e7655be5539b7c16de2e0577b97d54374c125efe3b296adfbe02fe3"
+      "sha256": "5cd66e72a1138f32a6dcfb8ba71c5503bfe6a4901f6caf291d0530d320adb577"
     },
     "python/flow2api/src/services/proxy_manager.py": {
       "upstream_path": "src/services/proxy_manager.py",
-      "sha256": "c53047dcfa869e960eb72e47a9bde05867ddfb0cec5fa24de23a2771596fb741"
+      "sha256": "440f46caf9caa38e6b420c09528119c3b4c1d7090bbb04b552aa91772ca4bb43"
     },
     "python/flow2api/src/services/twocaptcha.py": {
       "upstream_path": "src/services/twocaptcha.py",
-      "sha256": "92a8767aaa57690c157ad54a61ea85348dc1312409e6780c0cd17308168e0e61"
+      "sha256": "a197c428e0c3515707c23b8b56d449a72c6b7101aa969d6683a715e6d8c57a44"
     }
   },
   "plugin_adapters": [
@@ -143,16 +143,24 @@
   ],
   "runtime_generation_verification": "Not implied by upstream synchronization or mock/cloud tests",
   "local_patches": {
-    "python/flow2api/src/services/flow_frontend.py": "Plugin frontend integration retained locally (pre-existing divergence).",
+    "python/flow2api/src/services/flow_frontend.py": "Plugin frontend integration retained locally (pre-existing divergence). User-facing errors localized to English; the auth failure marker is 'Flow login authentication failed', matched by token_manager (P3).",
     "python/flow2api/src/main.py": "Calls ensure_bootstrap_credentials() before reloading config (security hardening).",
-    "python/flow2api/src/api/admin.py": "bcrypt login, login throttling, expiring session tokens, removal of write-only login_password; outbound TLS verification enabled.",
+    "python/flow2api/src/api/admin.py": "bcrypt login, login throttling, expiring session tokens, removal of write-only login_password; outbound TLS verification enabled. User-facing log/error messages localized to English (P3).",
     "python/flow2api/src/core/auth.py": "Constant-time comparisons, bcrypt password verification, fail-closed empty secrets.",
-    "python/flow2api/src/core/config.py": "unsafe_retries setting, tolerant admin/api secret properties and tls_verify/tls_ca_bundle settings.",
-    "python/flow2api/src/core/database.py": "unsafe_retries column, bootstrap secret rotation, login_password column dropped on upgrade.",
+    "python/flow2api/src/core/config.py": "unsafe_retries setting, tolerant admin/api secret properties and tls_verify/tls_ca_bundle settings. User-facing log/error messages localized to English (P3).",
+    "python/flow2api/src/core/database.py": "unsafe_retries column, bootstrap secret rotation, login_password column dropped on upgrade. User-facing log/error messages localized to English (P3).",
     "python/flow2api/src/core/models.py": "unsafe_retries field; write-only login_password field removed.",
-    "python/flow2api/src/services/browser_captcha.py": "Plugin browser lifetime and diagnostics integration (pre-existing divergence).",
-    "python/flow2api/src/services/generation_handler.py": "Content-filter retry budget (unsafe_retries) (pre-existing divergence).",
-    "python/flow2api/src/api/routes.py": "Outbound TLS verification enabled for media downloads (tls_verify_param).",
-    "python/flow2api/src/services/file_cache.py": "Outbound TLS verification enabled for cached media downloads (tls_verify_param)."
+    "python/flow2api/src/services/browser_captcha.py": "Plugin browser lifetime and diagnostics integration (pre-existing divergence). Plugin browser lifetime and diagnostics integration (pre-existing divergence). User-facing messages localized to English; the 'grecaptcha.enterprise is not ready' marker is shared with the submission-uncertain check (P3).",
+    "python/flow2api/src/services/generation_handler.py": "Content-filter retry budget (unsafe_retries) (pre-existing divergence). User-facing log/error messages localized to English (P3).",
+    "python/flow2api/src/api/routes.py": "Outbound TLS verification enabled for media downloads (tls_verify_param). User-facing log/error messages localized to English (P3).",
+    "python/flow2api/src/services/file_cache.py": "Outbound TLS verification enabled for cached media downloads (tls_verify_param). User-facing log/error messages localized to English (P3).",
+    "python/flow2api/src/core/model_resolver.py": "User-facing log/error messages localized to English (P3).",
+    "python/flow2api/src/services/flow_client.py": "User-facing log/error messages localized to English; retry, auth and captcha markers now use stable English text consumed by generation_handler (P3).",
+    "python/flow2api/src/services/flow_current.py": "User-facing log/error messages localized to English (P3).",
+    "python/flow2api/src/services/protocol_login.py": "Login failure messages localized to English with stable reason codes (missing_identity/account_mismatch) (P3).",
+    "python/flow2api/src/services/browser_cookie_utils.py": "User-facing log/error messages localized to English (P3).",
+    "python/flow2api/src/services/proxy_manager.py": "User-facing log/error messages localized to English (P3).",
+    "python/flow2api/src/services/twocaptcha.py": "User-facing log/error messages localized to English (P3).",
+    "tests/upstream/test_veo_lite_support.py": "Generation error copy assertion localized to English, matching the localized user-facing message (P3)."
   }
 }

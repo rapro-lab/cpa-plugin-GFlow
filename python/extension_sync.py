@@ -29,36 +29,36 @@ def _classify_sync_failure(error, stage="session"):
     curl_code = getattr(error, "code", None)
     if isinstance(error, (asyncio.TimeoutError, TimeoutError)) or curl_code == 28 or "timed out" in text:
         return ExtensionSyncError(
-            "连接 Google Flow 超时，请检查 GFlow 的代理设置后重试。",
+            "Timed out connecting to Google Flow; check the GFlow proxy settings and retry.",
             code="gflow_upstream_timeout", status_code=504, stage=stage,
         )
-    if any(term in text for term in ("code=401", "code=403", "public_error_user_not_authenticated", "登录认证失败")):
+    if any(term in text for term in ("code=401", "code=403", "public_error_user_not_authenticated", "login authentication failed")):
         return ExtensionSyncError(
-            "Google 未接受当前登录态。请在同一浏览器打开 Flow，确认能进入项目页，刷新网页后再点“立即同步”；多个 Google 账号请使用独立浏览器配置。",
+            "Google did not accept the current session. Open Flow in the same browser, confirm the project page loads, refresh the page and click “Sync now”; use a separate browser profile for each Google account.",
             code="gflow_google_auth_rejected", status_code=422, stage=stage,
         )
     if any(term in text for term in ("bootstrap metadata", "returned no payload")):
         return ExtensionSyncError(
-            "Flow 返回了无法识别的页面或接口响应。请先打开 Flow 项目页完成登录或欢迎页；若仍失败，需要更新 GFlow 的网页接口适配。",
+            "Flow returned an unrecognized page or API response. Open the Flow project page first to finish login or the welcome screen; if it still fails, the GFlow web adapter needs an update.",
             code="gflow_upstream_protocol", status_code=502, stage=stage,
         )
     if curl_code in (5, 6, 7, 35, 60) or any(term in text for term in ("could not resolve", "failed to connect", "proxy connection", "ssl connect")):
         return ExtensionSyncError(
-            "GFlow 后台无法连接 Google Flow，请检查 GFlow 设置中的代理地址与端口。",
+            "The GFlow backend cannot reach Google Flow; check the proxy address and port in GFlow settings.",
             code="gflow_upstream_network", status_code=502, stage=stage,
         )
     if stage == "prepare":
         return ExtensionSyncError(
-            "登录态已验证，但准备 Flow 项目失败，账号尚未完成添加。请确认网页可以创建项目后重试。",
+            "The session is valid but preparing the Flow project failed; the account was not added. Confirm the web UI can create a project, then retry.",
             code="gflow_project_prepare_failed", status_code=502, stage=stage,
         )
     if stage in ("initialize", "save"):
         return ExtensionSyncError(
-            "GFlow 本地账号数据未能保存，请重启插件后重试。",
+            "GFlow could not save the local account data; restart the plugin and retry.",
             code="gflow_local_storage_failed", status_code=500, stage=stage,
         )
     return ExtensionSyncError(
-        "Google 登录态验证失败，请在同一浏览器确认 Flow 项目页可正常打开后重试。",
+        "Google session validation failed. In the same browser, confirm the Flow project page opens, then retry.",
         code="gflow_session_validation_failed", status_code=502, stage=stage,
     )
 
@@ -71,7 +71,7 @@ def classify_sync_failure(error, stage="session"):
     rpc = re.search(r"\brpc=(nzlxg|jHPbke)\b", text)
     if rpc:
         diagnostic.update(phase="rpc", rpc=rpc.group(1))
-    elif "bootstrap" in text.lower() or "登录态被重定向" in text:
+    elif "bootstrap" in text.lower() or "Session redirected" in text:
         diagnostic["phase"] = "bootstrap"
     code = re.search(r"\bcode=(\d{1,3})\b", text)
     if code:
@@ -97,18 +97,18 @@ def classify_sync_failure(error, stage="session"):
 async def sync_extension_account(service, params):
     email = str(params.get("login_account") or "").strip().lower()
     if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) or len(email) > 254:
-        raise ExtensionSyncError("请在 GFlow 登录助手中填写当前 Google 账号邮箱", code="gflow_invalid_email")
+        raise ExtensionSyncError("Enter the email of the current Google account in the GFlow login assistant", code="gflow_invalid_email")
     if not isinstance(params.get("google_cookies"), (str, list, dict)):
-        raise ExtensionSyncError("扩展未提交完整 Cookie，请登录 Google Flow 后重试", code="gflow_missing_cookies")
+        raise ExtensionSyncError("The extension did not submit full cookies; sign in to Google Flow and retry", code="gflow_missing_cookies")
     try:
         session_token, cookies = normalize_account_input(None, params["google_cookies"])
         if not cookies or len(cookies.encode("utf-8")) > 262144:
-            raise ValueError("Cookie 内容为空或过大")
+            raise ValueError("Cookie content is empty or too large")
         from src.services.browser_cookie_utils import validate_flow_cookie_storage
         validate_flow_cookie_storage(cookies)
     except ValueError:
         raise ExtensionSyncError(
-            "未获取到完整 Flow 登录态，请先在同一浏览器登录 flow.google.com 后再同步。",
+            "No complete Flow session was found; sign in to flow.google.com in the same browser, then sync.",
             code="gflow_incomplete_cookies",
         ) from None
     try:
@@ -122,16 +122,16 @@ async def sync_extension_account(service, params):
     previous = getter() if callable(getter) else None
     user_agent = str(params.get("user_agent") or "").strip()
     if len(user_agent) > 512 or any(ord(ch) < 32 or ord(ch) == 127 for ch in user_agent):
-        raise ExtensionSyncError("浏览器请求特征无效，请更新登录助手后重试", code="gflow_invalid_browser")
+        raise ExtensionSyncError("Invalid browser request signature; update the login assistant and retry", code="gflow_invalid_browser")
     frontend = params.get("frontend")
     if frontend is not None:
         if not isinstance(frontend, dict) or not all(isinstance(frontend.get(key), str) for key in ("bl", "sid", "at", "source_path")):
-            raise ExtensionSyncError("Flow 页面认证信息无效，请更新登录助手", code="gflow_invalid_browser")
+            raise ExtensionSyncError("Invalid Flow page credentials; update the login assistant", code="gflow_invalid_browser")
         if not (re.fullmatch(r"boq_labs-ai-sandbox-frontend_[A-Za-z0-9_.-]{1,100}", frontend["bl"])
                 and re.fullmatch(r"-?\d{1,32}", frontend["sid"])
                 and re.fullmatch(r"[A-Za-z0-9_:+/=.\-]{1,4096}", frontend["at"])
                 and re.fullmatch(r"/projects|/project/[a-fA-F0-9-]{36}", frontend["source_path"])):
-            raise ExtensionSyncError("Flow 页面认证信息无效，请更新登录助手", code="gflow_invalid_browser")
+            raise ExtensionSyncError("Invalid Flow page credentials; update the login assistant", code="gflow_invalid_browser")
     bound = bool(user_agent or frontend)
     try:
         if bound and callable(setter):
@@ -150,7 +150,7 @@ async def sync_extension_account(service, params):
                     if type(value) is int and 0 <= value < 600:
                         failure.diagnostic["browser_" + key] = value
                 if check["success"] and failure.code == "gflow_google_auth_rejected":
-                    failure.args=("浏览器额度查询成功，但 GFlow 后台登录校验被 Google 拒绝（401）。账号尚未添加；需要继续检查浏览器与后台请求差异，无需反复登录。",)
+                    failure.args=("The browser read the quota, but Google rejected the GFlow backend login check (401). The account was not added; keep comparing browser and backend requests, no need to sign in repeatedly.",)
             if params.get("cookie_source") == "browser_request":
                 failure.diagnostic = getattr(failure, "diagnostic", {})
                 failure.diagnostic["observed_cookie_header"] = True
@@ -174,11 +174,9 @@ async def _validate_and_save(service, email, session_token, cookies):
         except Exception as refresh_error:
             raise classify_sync_failure(refresh_error) from None
         if refreshed.get("success") is not True:
-            reason = str(refreshed.get("error") or "")
+            reason = str(refreshed.get("reason") or "")
             failure.diagnostic["cookie_refresh"] = (
-                "missing_identity" if "未返回已登录账号" in reason else
-                "account_mismatch" if "不一致" in reason else
-                "rejected"
+                reason if reason in {"missing_identity", "account_mismatch"} else "rejected"
             )
             raise failure from None
         try:
@@ -195,7 +193,7 @@ async def _validate_and_save(service, email, session_token, cookies):
     observed_email = str((session.get("user") or {}).get("email") or "").strip().lower()
     if observed_email and observed_email != email:
         raise ExtensionSyncError(
-            "扩展填写的邮箱与 Google 当前登录账号不一致",
+            "The email entered in the extension does not match the Google account currently signed in",
             code="gflow_account_mismatch", status_code=409, stage="session",
         )
     try:
@@ -218,16 +216,16 @@ async def _validate_and_save(service, email, session_token, cookies):
             )
         except Exception as error:
             raise classify_sync_failure(error, "save") from None
-        return {"success": True, "action": "updated", "token_id": existing.id, "message": "GFlow 账号登录态已更新；账号原有启停状态保持不变"}
+        return {"success": True, "action": "updated", "token_id": existing.id, "message": "GFlow account session updated; the existing enabled/disabled state was kept"}
     try:
         account = await service.token_manager.add_token(
             st=session_token,
             google_cookies=cookies,
             login_account=email,
             protocol_mode="protocol",
-            remark="由 GFlow 登录助手添加",
+            remark="Added by the GFlow login assistant",
             validated_session=session,
         )
     except Exception as error:
         raise classify_sync_failure(error, "prepare") from None
-    return {"success": True, "action": "added", "token_id": account.id, "message": "GFlow 账号已添加，可返回账号列表刷新查看"}
+    return {"success": True, "action": "added", "token_id": account.id, "message": "GFlow account added; go back to the account list and refresh"}

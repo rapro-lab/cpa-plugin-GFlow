@@ -29,7 +29,7 @@ headerListener({tabId:42,method:'POST',url:'https://flow.google.com/_/AiSandboxA
         {name:'OSID',value:'fake-flow',domain:'flow.google.com',hostOnly:true,path:'/'},
         ...(query.url.includes('/_/')?[{name:'rpc-cookie',value:'fake-scoped',domain:'flow.google.com',hostOnly:true,path:'/_/'}]:[])
       ];}}
-  },fetch:async(url,opts)=>{uploads++;const payload=JSON.parse(opts.body);assert.equal(payload.frontend.at,'fake');assert.equal(listening,0);assert.equal(removed,created-1);assert.equal(payload.google_cookies,'SID=observed; OSID=actual-flow; rpc-cookie=actual-scope');assert.equal(payload.browser_check.success,true);assert.equal(payload.cookie_source,'browser_request');return mode==='backend-failure'?{status:422,ok:false,json:async()=>({success:false,error:{code:'gflow_google_auth_rejected',message:'模拟登录校验失败'}})}:{status:200,ok:true,json:async()=>({success:true,action:'added'})};}
+  },fetch:async(url,opts)=>{uploads++;const payload=JSON.parse(opts.body);assert.equal(payload.frontend.at,'fake');assert.equal(listening,0);assert.equal(removed,created-1);assert.equal(payload.google_cookies,'SID=observed; OSID=actual-flow; rpc-cookie=actual-scope');assert.equal(payload.browser_check.success,true);assert.equal(payload.cookie_source,'browser_request');return mode==='backend-failure'?{status:422,ok:false,json:async()=>({success:false,error:{code:'gflow_google_auth_rejected',message:'simulated login validation failure'}})}:{status:200,ok:true,json:async()=>({success:true,action:'added'})};}
 });
 vm.runInContext(COMMON,context);vm.runInContext(BACKGROUND,context);
 (async()=>{

@@ -29,36 +29,36 @@ def _uuid(value, field):
     try:
         return str(uuid.UUID(str(value)))
     except (ValueError, TypeError, AttributeError):
-        raise ProjectControlError("invalid_request", field + " 必须为 UUID") from None
+        raise ProjectControlError("invalid_request", field + " must be a UUID") from None
 
 
 def _text(value, field, limit=128):
     if not isinstance(value, str) or not value.strip() or len(value) > limit or any(ord(c) < 32 for c in value):
-        raise ProjectControlError("invalid_request", field + " 无效")
+        raise ProjectControlError("invalid_request", field + " is invalid")
     return value.strip()
 
 
 def parse_control_request(params):
     if params.get("stream") is not False:
-        raise ProjectControlError("invalid_request", "项目控制请求必须使用 stream=false")
+        raise ProjectControlError("invalid_request", "Project control requests must use stream=false")
     messages = params.get("messages")
     if not isinstance(messages, list) or len(messages) != 1 or not isinstance(messages[0], dict) or messages[0].get("role") != "user":
-        raise ProjectControlError("invalid_request", "项目控制请求必须包含一条 user JSON 消息")
+        raise ProjectControlError("invalid_request", "Project control requests must contain one user JSON message")
     content = messages[0].get("content")
     if not isinstance(content, str) or len(content) > 8192:
-        raise ProjectControlError("invalid_request", "项目控制 JSON 消息无效")
+        raise ProjectControlError("invalid_request", "Invalid project control JSON message")
     try:
         value = json.loads(content)
     except (ValueError, TypeError):
-        raise ProjectControlError("invalid_request", "项目控制消息不是 JSON") from None
+        raise ProjectControlError("invalid_request", "Project control message is not JSON") from None
     allowed = {"version", "op", "workspaceId", "operationId", "projectId", "name", "preferredModel", "flowProjectId"}
     if not isinstance(value, dict) or set(value) - allowed or type(value.get("version")) is not int or value["version"] != 1:
-        raise ProjectControlError("unsupported_protocol", "不支持的项目控制协议")
+        raise ProjectControlError("unsupported_protocol", "Unsupported project control protocol")
     if not isinstance(value.get("op"), str) or value.get("op") not in {"capabilities", "projects.list", "projects.create", "projects.get"}:
-        raise ProjectControlError("invalid_request", "不支持的项目控制操作")
+        raise ProjectControlError("invalid_request", "Unsupported project control operation")
     if "flowProjectId" in value:
         if value["op"] != "projects.get":
-            raise ProjectControlError("invalid_request", "flowProjectId 仅用于项目查询诊断")
+            raise ProjectControlError("invalid_request", "flowProjectId is only for project query diagnostics")
         if value["flowProjectId"] is not None:
             value["flowProjectId"] = _uuid(value["flowProjectId"], "flowProjectId")
     value["workspaceId"] = _uuid(value.get("workspaceId"), "workspaceId")
@@ -69,7 +69,7 @@ def parse_control_request(params):
         value["name"] = _text(value.get("name"), "name")
         value["preferredModel"] = _text(value.get("preferredModel") or "gflow-nano-banana-2-lite", "preferredModel")
         if value["preferredModel"] not in dict(BASE_MODELS):
-            raise ProjectControlError("invalid_model", "项目首选模型必须来自 GFlow 基础模型目录")
+            raise ProjectControlError("invalid_model", "The project's preferred model must come from the GFlow base model catalog")
     return value
 
 
@@ -95,7 +95,7 @@ def error_completion(error, *, instance_id="", workspace_id=None):
 def account_fingerprint(token):
     identity = str(getattr(token, "email", "") or getattr(token, "login_account", "") or "").strip().casefold()
     if not identity:
-        raise ProjectControlError("account_identity_unknown", "账号缺少已验证身份，无法固定项目归属", 409)
+        raise ProjectControlError("account_identity_unknown", "The account has no verified identity, so the project cannot be pinned", 409)
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
@@ -104,7 +104,7 @@ def account_label(token):
     if "@" in email:
         user, domain = email.split("@", 1)
         return (user[:1] or "*") + "***@" + domain
-    return "Google 账号 " + str(token.id)
+    return "Google account " + str(token.id)
 
 
 def model_capabilities(tokens=None):
@@ -174,7 +174,7 @@ class BoundTokenManager:
         if binding is None:
             return await self.manager.ensure_project_exists(token_id)
         if binding["token_id"] != token_id:
-            raise ProjectControlError("project_account_conflict", "生成账号与项目归属不一致", 409)
+            raise ProjectControlError("project_account_conflict", "The generating account does not match the project owner", 409)
         return await self.resolve_project_id(token_id)
 
     async def ensure_valid_token(self, token):
@@ -198,13 +198,13 @@ class BoundLoadBalancer:
     def _validate_token(token, binding, image, video, model):
         from src.core.account_tiers import supports_model_for_tier
         if not token or not token.is_active or account_fingerprint(token) != binding["account_fingerprint"]:
-            raise ProjectControlError("project_account_unavailable", "项目所属账号已移除、停用或身份变更", 409)
+            raise ProjectControlError("project_account_unavailable", "The project account was removed, disabled or changed identity", 409)
         if token.id != binding["token_id"]:
-            raise ProjectControlError("project_account_conflict", "项目所属账号已变更", 409)
+            raise ProjectControlError("project_account_conflict", "The project account changed", 409)
         if (image and not token.image_enabled) or (video and not token.video_enabled):
-            raise ProjectControlError("project_account_unavailable", "项目账号未启用此类生成", 409)
+            raise ProjectControlError("project_account_unavailable", "The project account has this generation type disabled", 409)
         if not supports_model_for_tier(model, token.user_paygate_tier):
-            raise ProjectControlError("project_model_unavailable", "当前项目账号不支持所选画质或模型；请降低画质或新建项目", 403)
+            raise ProjectControlError("project_model_unavailable", "The project account does not support the selected quality or model; lower the quality or create a new project", 403)
 
     async def select_token(self, **kwargs):
         binding = CURRENT_BINDING.get()
@@ -220,16 +220,16 @@ class BoundLoadBalancer:
         self._validate_token(token, binding, image, video, kwargs.get("model"))
         route_ok, _ = await self.balancer._check_extension_route(token)
         if not route_ok:
-            raise ProjectControlError("project_account_unavailable", "项目所属账号的浏览器验证路由未就绪", 409)
+            raise ProjectControlError("project_account_unavailable", "The project account's browser verification route is not ready", 409)
         # 固定项目始终做非阻塞并发预检；这里不占用槽位，不影响上游视频槽位获取。
         # 上游传 enforce_concurrency_filter=False 不能绕过固定账号的忙碌检查。
         manager = self.balancer.concurrency_manager
         if manager:
             available = await manager.can_use_image(token.id) if image else await manager.can_use_video(token.id) if video else True
             if not available:
-                raise ProjectControlError("project_account_busy", "项目所属账号并发已满，请稍后再试", 409)
+                raise ProjectControlError("project_account_busy", "The project account is at its concurrency limit; try again later", 409)
         if kwargs.get("reserve") and not await self.balancer._reserve_slot(token.id, image, video):
-            raise ProjectControlError("project_account_busy", "项目所属账号当前正忙，请稍后再试", 409)
+            raise ProjectControlError("project_account_busy", "The project account is busy; try again later", 409)
         if kwargs.get("track_pending"):
             await self.balancer._add_pending(token.id, image, video)
         return token
@@ -258,7 +258,7 @@ class ProjectControl:
                 created_at REAL NOT NULL, updated_at REAL NOT NULL,
                 PRIMARY KEY (workspace_id, project_id), UNIQUE (workspace_id, operation_id))""")
             # 重启中断的创建不能自动重发。
-            await db.execute("UPDATE cutflow_projects SET state='creation_unknown', error_code='creation_unknown', error_message='服务在项目创建期间中断，请核查 Google Flow；不会自动重建' WHERE state='creating'")
+            await db.execute("UPDATE cutflow_projects SET state='creation_unknown', error_code='creation_unknown', error_message='Service interrupted during project creation; check Google Flow. It will not be recreated automatically.' WHERE state='creating'")
             await db.commit()
 
     async def _rows(self, where, args):
@@ -286,10 +286,10 @@ class ProjectControl:
             if op == "projects.get":
                 rows = await self._rows("workspace_id=? AND project_id=?", (workspace, request["projectId"]))
                 if not rows:
-                    raise ProjectControlError("project_not_found", "此工作区没有该项目", 404)
+                    raise ProjectControlError("project_not_found", "This workspace does not have that project", 404)
                 row = rows[0]
                 if request.get("flowProjectId") and request["flowProjectId"] != row["flow_project_id"]:
-                    raise ProjectControlError("project_binding_conflict", "项目的 Google Flow 标识与保存的绑定不一致", 409)
+                    raise ProjectControlError("project_binding_conflict", "The project's Google Flow id does not match the stored binding", 409)
             else:
                 row = await self.create(request)
             payload["project"] = self._public(row)
@@ -312,7 +312,7 @@ class ProjectControl:
             if previous:
                 row = previous[0]
                 if row["operation_id"] != request["operationId"] or row["request_hash"] != digest:
-                    raise ProjectControlError("operation_conflict", "项目或 operationId 已用于其他请求", 409)
+                    raise ProjectControlError("operation_conflict", "The project or operationId was already used by another request", 409)
                 return row
             now = time.time()
             async with self.service.db._connect(write=True) as db:
@@ -327,7 +327,7 @@ class ProjectControl:
                 token = await self.service.load_balancer.select_token(for_image_generation=kind=="image", for_video_generation=kind=="video",
                                                                       model=request["preferredModel"], reserve=False, track_pending=False)
                 if token is None:
-                    raise ProjectControlError("project_account_unavailable", "没有可用的 Google Flow 账号，请同步登录后新建项目", 503)
+                    raise ProjectControlError("project_account_unavailable", "No Google Flow account available; sign in and sync, then create a project", 503)
                 fingerprint = account_fingerprint(token)
                 label = account_label(token)
                 async with self.service.db._connect(write=True) as db:
@@ -345,11 +345,11 @@ class ProjectControl:
                     await db.commit()
             except BaseException as error:
                 if submitted:
-                    state, code, message = "creation_unknown", "creation_unknown", "Google Flow 项目创建回执未确认，请核查云端；不会自动重建"
+                    state, code, message = "creation_unknown", "creation_unknown", "The Google Flow project creation receipt was not confirmed; check the cloud side. It will not be recreated automatically."
                 elif isinstance(error, ProjectControlError):
                     state, code, message = "failed", error.code, str(error)
                 else:
-                    state, code, message = "failed", "project_creation_failed", "项目账号准备失败，请检查登录和网络"
+                    state, code, message = "failed", "project_creation_failed", "Preparing the project account failed; check login and network"
                 await asyncio.shield(self._fail(request, state, code, message))
                 if isinstance(error, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)):
                     raise
@@ -360,18 +360,18 @@ class ProjectControl:
         if not any(field in params for field in fields):
             return None
         if not all(isinstance(params.get(field), str) and params[field] for field in fields):
-            raise ProjectControlError("project_binding_required", "项目生成必须同时提供工作区、项目和服务实例标识")
+            raise ProjectControlError("project_binding_required", "Project generation requires the workspace, project and service instance ids")
         if params["gflow_instance_id"] != self.instance_id:
-            raise ProjectControlError("project_service_changed", "生成服务已变更，请重新连接项目", 409)
+            raise ProjectControlError("project_service_changed", "The generation service changed; reconnect the project", 409)
         workspace = _uuid(params["gflow_workspace_id"], "gflow_workspace_id")
         project = _uuid(params["gflow_project_id"], "gflow_project_id")
         rows = await self._rows("workspace_id=? AND flow_project_id=?", (workspace, project))
         if not rows:
-            raise ProjectControlError("project_not_found", "此工作区没有该项目", 404)
+            raise ProjectControlError("project_not_found", "This workspace does not have that project", 404)
         row = rows[0]
         if row["state"] != "ready":
-            raise ProjectControlError("project_not_ready", "项目尚未完成 Google Flow 绑定，禁止生成", 409)
+            raise ProjectControlError("project_not_ready", "The project is not bound to Google Flow yet; generation is blocked", 409)
         token = await self.service.db.get_token(row["token_id"])
         if not token or not token.is_active or account_fingerprint(token) != row["account_fingerprint"]:
-            raise ProjectControlError("project_account_unavailable", "项目所属账号已移除、停用或身份变更", 409)
+            raise ProjectControlError("project_account_unavailable", "The project account was removed, disabled or changed identity", 409)
         return row

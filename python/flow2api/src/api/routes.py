@@ -198,14 +198,14 @@ async def retrieve_image_data(url: str) -> Optional[bytes]:
                 if data:
                     return data
     except Exception as exc:
-        debug_logger.log_warning(f"[CONTEXT] 本地缓存读取失败: {str(exc)}")
+        debug_logger.log_warning(f"[CONTEXT] Failed to read the local cache: {str(exc)}")
 
     proxy_url = None
     try:
         if file_cache and hasattr(file_cache, "_resolve_download_proxy"):
             proxy_url = await file_cache._resolve_download_proxy("image")
     except Exception as exc:
-        debug_logger.log_warning(f"[CONTEXT] 图片下载代理解析失败: {str(exc)}")
+        debug_logger.log_warning(f"[CONTEXT] Failed to parse image download proxy: {str(exc)}")
 
     try:
         async with AsyncSession() as session:
@@ -226,10 +226,10 @@ async def retrieve_image_data(url: str) -> Optional[bytes]:
             if response.status_code == 200 and response.content:
                 return response.content
             debug_logger.log_warning(
-                f"[CONTEXT] 图片下载失败，状态码: {response.status_code}"
+                f"[CONTEXT] Image download failed, status code: {response.status_code}"
             )
     except Exception as exc:
-        debug_logger.log_error(f"[CONTEXT] 图片下载异常: {str(exc)}")
+        debug_logger.log_error(f"[CONTEXT] Image download error: {str(exc)}")
 
     return None
 
@@ -347,7 +347,7 @@ async def _append_openai_reference_images(
     if not model_config or model_config["type"] != "image" or len(messages) <= 1:
         return images
 
-    debug_logger.log_info(f"[CONTEXT] 开始查找历史参考图，消息数量: {len(messages)}")
+    debug_logger.log_info(f"[CONTEXT] Looking for historical reference images, message count: {len(messages)}")
 
     for msg in reversed(messages[:-1]):
         if msg.role == "assistant" and isinstance(msg.content, str):
@@ -363,14 +363,14 @@ async def _append_openai_reference_images(
                     if downloaded_bytes:
                         images.insert(0, downloaded_bytes)
                         debug_logger.log_info(
-                            f"[CONTEXT] ✅ 添加历史参考图: {image_url}"
+                            f"[CONTEXT] ✅ Added historical reference image: {image_url}"
                         )
                         return images
                     debug_logger.log_warning(
-                        f"[CONTEXT] 图片下载失败或为空，尝试下一个: {image_url}"
+                        f"[CONTEXT] Image download failed or empty, trying the next one: {image_url}"
                     )
                 except Exception as exc:
-                    debug_logger.log_error(f"[CONTEXT] 处理参考图时出错: {str(exc)}")
+                    debug_logger.log_error(f"[CONTEXT] Error while processing reference image: {str(exc)}")
     return images
 
 
@@ -425,7 +425,7 @@ def _resolve_request_model(
         model=model, request=request, model_config=MODEL_CONFIG, images=images
     )
     if resolved_model != model:
-        debug_logger.log_info(f"[ROUTE] 模型名已转换: {model} → {resolved_model}")
+        debug_logger.log_info(f"[ROUTE] Model name converted: {model} → {resolved_model}")
     return resolved_model
 
 
@@ -500,7 +500,7 @@ async def _normalize_gemini_request(
     if system_instruction:
         if media_model and _should_ignore_media_system_instruction(system_instruction):
             debug_logger.log_warning(
-                f"[GEMINI] 忽略媒体模型的 systemInstruction: model={resolved_model}, len={len(system_instruction)}"
+                f"[GEMINI] Ignoring systemInstruction for media model: model={resolved_model}, len={len(system_instruction)}"
             )
         else:
             if media_model:

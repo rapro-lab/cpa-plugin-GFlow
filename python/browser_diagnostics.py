@@ -9,16 +9,16 @@ from functools import wraps
 
 CURRENT_BROWSER_DIAGNOSTIC = ContextVar("gflow_browser_diagnostic", default=None)
 STAGE_TEXT = {
-    "browser_startup": "浏览器启动",
-    "page_load": "浏览器页面加载",
-    "browser_session": "浏览器连接",
+    "browser_startup": "Browser startup",
+    "page_load": "Browser page load",
+    "browser_session": "Browser connection",
 }
 REASON_TEXT = {
-    "timeout": "超时",
-    "not_found": "所需程序或文件不存在",
-    "access_denied": "访问被拒绝",
-    "disconnected": "连接已断开",
-    "failed": "未完成",
+    "timeout": "Timed out",
+    "not_found": "Required program or file is missing",
+    "access_denied": "Access denied",
+    "disconnected": "Connection closed",
+    "failed": "Incomplete",
 }
 
 
@@ -117,15 +117,15 @@ def diagnose_browser_error(error):
     failure = state.get("failure") if state else None
     stage = failure["stage"] if failure else "browser_session"
     reason = failure["reason"] if failure else "failed"
-    detail = (f"{STAGE_TEXT[stage]}阶段失败（{REASON_TEXT[reason]}）"
-              if failure else "浏览器验证未完成，当前没有更具体的安全诊断")
+    detail = (f"{STAGE_TEXT[stage]} stage failed ({REASON_TEXT[reason]})"
+              if failure else "Browser verification did not finish and no more specific security diagnostic is available")
     status = error.get("status_code")
     if type(status) is not int or not 400 <= status <= 599:
         status = 503
     return {
         "status_code": status,
         "type": "browser_runtime_error",
-        "message": f"{detail}。请检查插件专用浏览器运行状态；程序未重新提交生成。",
+        "message": f"{detail}. Check the plugin browser runtime; the request was not resubmitted.",
         "code": "gflow_" + stage + "_failed",
         "browser_stage": stage,
         "browser_reason": reason,

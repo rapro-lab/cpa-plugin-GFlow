@@ -54,13 +54,13 @@ def get_gflow_model_catalog() -> List[Dict[str, Any]]:
     客户端选择这 7 个模型时，后台会根据比例/画质/时长自动调配底层笛卡尔积变体。
     """
     base_models = [
-        ("gflow-nano-banana-pro", "nano-banana-pro", "image", "Nano Banana Pro", "Google Flow 核心图片模型 - 支持 1:1, 16:9, 9:16, 4:3, 3:4 与 1K/2K/4K 自动调配"),
-        ("gflow-nano-banana-2-lite", "nano-banana-2-lite", "image", "Nano Banana 2 Lite", "Google Flow 核心图片模型 - 支持 1:1, 16:9, 9:16, 4:3, 3:4 与 1K/2K/4K 自动调配"),
-        ("gflow-nano-banana-2.1", "nano-banana-2.1", "image", "Nano Banana 2.1", "Google Flow 核心图片模型 - 支持 1:1, 16:9, 9:16, 4:3, 3:4 与 1K/2K/4K 自动调配"),
-        ("gflow-omni-1.1-flash", "omni-1.1-flash", "video", "Omni 1.1 Flash", "Google Flow 核心视频模型 - 支持 4s/6s/8s/10s 时长与横/竖屏自动调配"),
-        ("gflow-veo-3.1-lite", "veo-3.1-lite", "video", "Veo 3.1 - Lite", "Google Flow 核心视频模型 - 支持 4s/6s/8s 时长与横/竖屏自动调配"),
-        ("gflow-veo-3.1-fast", "veo-3.1-fast", "video", "Veo 3.1 - Fast", "Google Flow 核心视频模型 - 支持 4s/6s/8s 时长与横/竖屏自动调配"),
-        ("gflow-veo-3.1-quality", "veo-3.1-quality", "video", "Veo 3.1 - Quality", "Google Flow 核心视频模型 - 支持 4s/6s/8s 时长与横/竖屏自动调配"),
+        ("gflow-nano-banana-pro", "nano-banana-pro", "image", "Nano Banana Pro", "Google Flow core image model - supports 1:1, 16:9, 9:16, 4:3, 3:4 with automatic 1K/2K/4K mapping"),
+        ("gflow-nano-banana-2-lite", "nano-banana-2-lite", "image", "Nano Banana 2 Lite", "Google Flow core image model - supports 1:1, 16:9, 9:16, 4:3, 3:4 with automatic 1K/2K/4K mapping"),
+        ("gflow-nano-banana-2.1", "nano-banana-2.1", "image", "Nano Banana 2.1", "Google Flow core image model - supports 1:1, 16:9, 9:16, 4:3, 3:4 with automatic 1K/2K/4K mapping"),
+        ("gflow-omni-1.1-flash", "omni-1.1-flash", "video", "Omni 1.1 Flash", "Google Flow core video model - supports 4s/6s/8s/10s durations with automatic landscape/portrait mapping"),
+        ("gflow-veo-3.1-lite", "veo-3.1-lite", "video", "Veo 3.1 - Lite", "Google Flow core video model - supports 4s/6s/8s durations with automatic landscape/portrait mapping"),
+        ("gflow-veo-3.1-fast", "veo-3.1-fast", "video", "Veo 3.1 - Fast", "Google Flow core video model - supports 4s/6s/8s durations with automatic landscape/portrait mapping"),
+        ("gflow-veo-3.1-quality", "veo-3.1-quality", "video", "Veo 3.1 - Quality", "Google Flow core video model - supports 4s/6s/8s durations with automatic landscape/portrait mapping"),
     ]
     models = []
     for mid, orig_id, mtype, dname, desc in base_models:
@@ -248,7 +248,7 @@ class GFlowService:
 
         token_st = st
         if not token_st and not google_cookies:
-            raise ValueError("Cookie 或 st 不能为空")
+            raise ValueError("Cookie or st must not be empty")
 
         new_token = await self.token_manager.add_token(
             st=token_st,
@@ -295,7 +295,7 @@ class GFlowService:
         await self.initialize()
         tid = params.get("token_id")
         if not tid:
-            raise ValueError("token_id 必须指定")
+            raise ValueError("token_id is required")
         await self.token_manager.delete_token(int(tid))
         return {"success": True}
 
@@ -316,7 +316,7 @@ class GFlowService:
         token = await self.db.get_token(tid)
         if token is None:
             return {"success": False, "status_code": 404,
-                    "error": {"code": "gflow_account_not_found", "message": "GFlow 账号不存在"}}
+                    "error": {"code": "gflow_account_not_found", "message": "GFlow account not found"}}
         try:
             result = await self.flow_client.get_credits(
                 token.at, google_cookies=token.google_cookies, token_id=tid,
@@ -329,7 +329,7 @@ class GFlowService:
             if failure.code == "gflow_google_auth_rejected":
                 return {"success": False, "status_code": 401,
                         "error": {"code": "gflow_session_expired",
-                                  "message": "Google 未接受 GFlow 保存的登录态，请在已登录的 Flow 网页通过登录助手更新；历史余额保持不变。"}}
+                                  "message": "Google did not accept the stored GFlow session; refresh it with the login assistant from a signed-in Flow page. The previous balance is preserved."}}
             return failure.result()
         credits = int(result.get("credits", 0))
         await self.db.update_token(
@@ -426,7 +426,7 @@ class GFlowService:
                                     workspace_id=request.get("workspaceId") if request else None)
         except Exception:
             # 不把凭据、数据库路径或上游原始异常带入公开控制响应。
-            return error_completion(ProjectControlError("project_control_unavailable", "项目服务暂不可用，请检查插件日志", 503),
+            return error_completion(ProjectControlError("project_control_unavailable", "Project service is temporarily unavailable; check the plugin log", 503),
                                     instance_id=getattr(getattr(self, "project_control", None), "instance_id", ""),
                                     workspace_id=request.get("workspaceId") if request else None)
 

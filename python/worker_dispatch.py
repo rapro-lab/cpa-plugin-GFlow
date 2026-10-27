@@ -35,7 +35,7 @@ class ManagementDispatcher:
             error = {"code": "worker_stopped", "message": "GFlow backend stopped; operation result may be unknown", "status_code": 503}
             if command == "project_control":
                 self.service.send_line({"id": request_id, "done": True, "result": error_completion(ProjectControlError(
-                    "worker_stopped", "项目操作被中断，结果需要核查；不会自动重建项目", 503))})
+                    "worker_stopped", "Project operation interrupted; the result needs review. The project will not be recreated automatically.", 503))})
             else:
                 self.service.send_line({"id": request_id, "done": True, "error": error})
         except ProjectControlError as error:
@@ -44,7 +44,7 @@ class ManagementDispatcher:
         except Exception as error:
             if command == "project_control":
                 self.service.send_line({"id": request_id, "done": True, "result": error_completion(ProjectControlError(
-                    "project_control_unavailable", "项目服务暂不可用，请检查插件日志", 503))})
+                    "project_control_unavailable", "Project service is temporarily unavailable; check the plugin log", 503))})
             else:
                 sys.stderr.write(f"[GFlowService] Error in {command}: {traceback.format_exc()}\n")
                 self.service.send_line({"id": request_id, "done": True, "error": {"message": str(error)}})

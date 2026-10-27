@@ -105,7 +105,7 @@ class FlowFrontendMixin:
                     code = code if code is not None else "unknown"
                     if str(code) == "401":
                         raise RuntimeError(
-                            "Flow 登录认证失败：Google Cookie 已失效、不完整，或来自不同账号 "
+                            "Flow login authentication failed: the Google Cookie expired, is incomplete, or belongs to a different account "
                             f"(rpc={rpc_id}, code=401)"
                         )
                     raise RuntimeError(
@@ -601,10 +601,10 @@ class FlowFrontendMixin:
             metadata["video"] = video_info
             error_message = {
                 "PUBLIC_ERROR_PROMINENT_PEOPLE_FILTER_FAILED": (
-                    "提示词或参考素材触发了人物安全过滤"
+                    "The prompt or reference media triggered the person safety filter"
                 ),
-                "PUBLIC_ERROR_UNSAFE_GENERATION": "提示词或参考素材触发了内容安全过滤",
-            }.get(error_code, f"Flow 上游拒绝视频生成：{error_code}")
+                "PUBLIC_ERROR_UNSAFE_GENERATION": "The prompt or reference media triggered the content safety filter",
+            }.get(error_code, f"Flow upstream rejected video generation: {error_code}")
             operation_body = {"name": operation_id, "metadata": metadata}
             if error_code:
                 operation_body["error"] = {
@@ -629,7 +629,7 @@ class FlowFrontendMixin:
         if not normalized:
             error_code = cls._extract_frontend_rpc_error_code(payload)
             if error_code:
-                error_message = f"Flow 上游拒绝视频生成：{error_code}"
+                error_message = f"Flow upstream rejected video generation: {error_code}"
                 for previous in operations:
                     operation_id = str(
                         (previous or {}).get("name")
@@ -688,7 +688,7 @@ class FlowFrontendMixin:
             response_host and response_host != "flow.google.com"
         ):
             raise RuntimeError(
-                "Flow 登录认证失败：Google Cookie 已失效、不完整，或登录态被重定向 "
+                "Flow login authentication failed: the Google Cookie expired, is incomplete, or the session was redirected "
                 f"(code={response.status_code})"
             )
         if response.status_code >= 400:

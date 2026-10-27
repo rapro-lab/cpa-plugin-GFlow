@@ -12,7 +12,7 @@ from src.services.token_manager import TokenManager
 class RefreshStateTests(unittest.IsolatedAsyncioTestCase):
     async def run_failure(self, reason):
         token = SimpleNamespace(id=1, st="fake", google_cookies="fake",
-                                last_st_refresh_result="RuntimeError: 账号浏览器标签页不可用")
+                                last_st_refresh_result="RuntimeError: account browser tab unavailable")
         manager = TokenManager.__new__(TokenManager)
         manager._refresh_locks = {}
         manager._refresh_lock_guard = asyncio.Lock()
@@ -32,7 +32,7 @@ class RefreshStateTests(unittest.IsolatedAsyncioTestCase):
         manager.db.update_token.assert_not_awaited()
 
     async def test_expired_session_records_precise_reason(self):
-        manager = await self.run_failure("FlowBootstrapError: Flow 登录认证失败：Google Cookie 已失效")
+        manager = await self.run_failure("FlowBootstrapError: Flow login authentication failed: Google Cookie expired")
         change = manager.db.update_token.await_args.kwargs
         self.assertFalse(change["is_active"])
         self.assertEqual(change["ban_reason"], "session_expired")

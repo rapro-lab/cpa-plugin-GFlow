@@ -185,7 +185,7 @@ fn handle_register(req: &[u8]) -> Result<Vec<u8>, String> {
                 "Name": "GFlow",
                 "Version": env!("CARGO_PKG_VERSION"),
                 "Author": "daodeqing",
-                "Description": "Google Flow 图片/视频生成、固定项目绑定与多账号池管理插件",
+                "Description": "Google Flow image/video generation, fixed project binding and multi-account pool management plugin",
                 "GitHubRepository": "https://github.com/daodeqing/cpa-plugin-GFlow",
                 "Logo": "https://raw.githubusercontent.com/daodeqing/cpa-plugin-GFlow/main/assets/logo.png",
                 "Homepage": "https://github.com/daodeqing/cpa-plugin-GFlow",
@@ -196,7 +196,7 @@ fn handle_register(req: &[u8]) -> Result<Vec<u8>, String> {
                         "Name": "data_dir",
                         "Type": "string",
                         "Default": "",
-                        "Description": "数据目录（留空使用插件动态库旁的 gflow-data；内含账号数据库、日志和独立后台运行时）"
+                        "Description": "Data directory (leave empty to use gflow-data next to the plugin library; it holds the account database, logs and the bundled background runtime)"
                     }
                 ]
             },
@@ -545,11 +545,11 @@ fn handle_management_register() -> Result<Vec<u8>, String> {
                 {
                     "Path": "/manage",
                     "Menu": "GFlow",
-                    "Description": "GFlow 账号与模型管理控制台"
+                    "Description": "GFlow account and model management console"
                 },
                 {
                     "Path": "/extension.zip",
-                    "Description": "下载 GFlow 登录助手"
+                    "Description": "Download the GFlow login helper"
                 }
             ],
             "Routes": [

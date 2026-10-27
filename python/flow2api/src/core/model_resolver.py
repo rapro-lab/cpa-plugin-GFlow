@@ -165,14 +165,14 @@ def _infer_aspect_ratio_from_images(
             width, height = normalized.size
     except Exception as exc:
         debug_logger.log_warning(
-            f"[MODEL_RESOLVER] 参考图尺寸解析失败，跳过自动比例跟随: {exc}"
+            f"[MODEL_RESOLVER] Failed to parse the reference image size; skipping automatic aspect following: {exc}"
         )
         return None
 
     inferred = _aspect_from_dimensions(width, height, video_mode=video_mode)
     if inferred:
         debug_logger.log_info(
-            f"[MODEL_RESOLVER] 未显式指定 aspectRatio，已按参考图尺寸自动推断: {width}x{height} -> {inferred}"
+            f"[MODEL_RESOLVER] aspectRatio was not set explicitly; inferred from the reference image size: {width}x{height} -> {inferred}"
         )
     return inferred
 
@@ -673,8 +673,8 @@ def resolve_model_name(
         supported_aspects = MODEL_SUPPORTED_ASPECTS.get(base, [])
         if aspect_ratio not in supported_aspects and supported_aspects:
             debug_logger.log_warning(
-                f"[MODEL_RESOLVER] 模型 {base} 不支持 aspectRatio={aspect_ratio}，"
-                f"降级到 {DEFAULT_ASPECT}"
+                f"[MODEL_RESOLVER] model {base} does not support aspectRatio={aspect_ratio},"
+                f" falling back to {DEFAULT_ASPECT}"
             )
             aspect_ratio = DEFAULT_ASPECT
 
@@ -688,19 +688,19 @@ def resolve_model_name(
                 resolved = f"{resolved}-{image_size}"
             else:
                 debug_logger.log_warning(
-                    f"[MODEL_RESOLVER] 模型 {base} 不支持 imageSize={image_size}，忽略"
+                    f"[MODEL_RESOLVER] model {base} does not support imageSize={image_size}, ignoring"
                 )
 
         # 最终验证
         if model_config and resolved not in model_config:
             debug_logger.log_warning(
-                f"[MODEL_RESOLVER] 解析后的模型名 {resolved} 不在 MODEL_CONFIG 中，"
-                f"回退到原始模型名 {model}"
+                f"[MODEL_RESOLVER] resolved model name {resolved} is not in MODEL_CONFIG;"
+                f" falling back to the original model name {model}"
             )
             return model
 
         debug_logger.log_info(
-            f"[MODEL_RESOLVER] 模型名转换: {model} → {resolved} "
+            f"[MODEL_RESOLVER] model name converted: {model} → {resolved} "
             f"(aspectRatio={aspect_ratio}, imageSize={image_size or 'default'})"
         )
         return resolved
@@ -729,14 +729,14 @@ def resolve_model_name(
 
         if resolved and model_config and resolved in model_config:
             debug_logger.log_info(
-                f"[MODEL_RESOLVER] 视频模型名转换: {model} → {resolved} "
+                f"[MODEL_RESOLVER] video model name converted: {model} → {resolved} "
                 f"(aspectRatio={aspect_ratio})"
             )
             return resolved
 
         debug_logger.log_warning(
-            f"[MODEL_RESOLVER] 视频模型 {model} 解析失败 (aspect={aspect_ratio})，"
-            f"使用原始模型名"
+            f"[MODEL_RESOLVER] video model {model} parsing failed (aspect={aspect_ratio}),"
+            f" using the original model name"
         )
         return model
 

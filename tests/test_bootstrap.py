@@ -89,7 +89,7 @@ class BootstrapTest(unittest.TestCase):
         result = self.request("/v0/resource/plugins/gflow/extension.zip")
         self.assertEqual(result["StatusCode"], 200)
         with zipfile.ZipFile(io.BytesIO(result["decoded"])) as archive:
-            self.assertEqual(json.loads(archive.read("manifest.json"))["name"], "GFlow 登录助手")
+            self.assertEqual(json.loads(archive.read("manifest.json"))["name"], "GFlow Login Assistant")
             self.assertIn("background.js", archive.namelist())
 
     def test_media_requires_management_route_and_stays_private(self):

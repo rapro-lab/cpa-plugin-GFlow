@@ -26,7 +26,7 @@ def request(op="projects.create", **changes):
     if op in {"projects.create", "projects.get"}:
         value["projectId"] = str(uuid.uuid4())
     if op == "projects.create":
-        value.update(operationId=str(uuid.uuid4()), name="测试项目", preferredModel="gflow-nano-banana-2-lite")
+        value.update(operationId=str(uuid.uuid4()), name="Test project", preferredModel="gflow-nano-banana-2-lite")
     value.update(changes)
     return value
 
@@ -153,7 +153,7 @@ class ProjectPersistenceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_migration_preserves_existing_pool_and_excludes_dedicated_project(self):
         pool_id = str(uuid.uuid4())
-        await self.db.add_project(Project(project_id=pool_id, token_id=self.token.id, project_name="旧池"))
+        await self.db.add_project(Project(project_id=pool_id, token_id=self.token.id, project_name="old pool"))
         value, project = await self.create()
         self.assertEqual(project["state"], "ready")
         pools = await PoolDatabase(self.db).get_projects_by_token(self.token.id)
@@ -182,7 +182,7 @@ class ProjectPersistenceTest(unittest.IsolatedAsyncioTestCase):
                 projectId=value["projectId"],flowProjectId=remote)))
             self.assertEqual((await self.control.handle(checked))["project"],project)
         mismatch = request("projects.get",workspaceId=value["workspaceId"],projectId=value["projectId"],flowProjectId=str(uuid.uuid4()))
-        with self.assertRaisesRegex(ProjectControlError,"不一致"):
+        with self.assertRaisesRegex(ProjectControlError,"does not match the stored binding"):
             await self.control.handle(parse_control_request(envelope(mismatch)))
         with self.assertRaises(ProjectControlError):
             parse_control_request(envelope(request(flowProjectId=self.remote_id)))
@@ -197,7 +197,7 @@ class ProjectPersistenceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_changed_operation_or_payload_is_conflict(self):
         value, _ = await self.create()
-        for change in ({"name":"改名"}, {"projectId":str(uuid.uuid4())}, {"operationId":str(uuid.uuid4())}):
+        for change in ({"name":"renamed"}, {"projectId":str(uuid.uuid4())}, {"operationId":str(uuid.uuid4())}):
             with self.subTest(change=change), self.assertRaisesRegex(ProjectControlError, "operationId"):
                 await self.control.handle(dict(value, **change))
         self.service.flow_client.create_project.assert_awaited_once()
@@ -326,11 +326,11 @@ class ProjectPersistenceTest(unittest.IsolatedAsyncioTestCase):
             low = self.token.model_copy(update={"user_paygate_tier":"PAYGATE_TIER_NOT_PAID"})
             self.manager.get_token = AsyncMock(return_value=low)
             self.balancer.select_token.reset_mock()
-            with self.assertRaisesRegex(ProjectControlError,"画质"):
+            with self.assertRaisesRegex(ProjectControlError,"quality"):
                 await BoundLoadBalancer(self.balancer,self.manager).select_token(for_image_generation=True,model="image-4k")
             self.manager.get_token = AsyncMock(return_value=self.token)
             self.balancer._check_extension_route.return_value = (False,"private failure")
-            with self.assertRaisesRegex(ProjectControlError,"路由"):
+            with self.assertRaisesRegex(ProjectControlError,"verification route"):
                 await BoundLoadBalancer(self.balancer,self.manager).select_token(for_image_generation=True,model="image")
             self.balancer.select_token.assert_not_awaited()
         finally:
@@ -359,11 +359,11 @@ class ProjectPersistenceTest(unittest.IsolatedAsyncioTestCase):
         context = CURRENT_BINDING.set(row)
         try:
             self.balancer.concurrency_manager = SimpleNamespace(can_use_image=AsyncMock(return_value=False))
-            with self.assertRaisesRegex(ProjectControlError, "并发"):
+            with self.assertRaisesRegex(ProjectControlError, "concurrency limit"):
                 await BoundLoadBalancer(self.balancer,self.manager).select_token(for_image_generation=True,model="image")
             changed = self.token.model_copy(update={"email":"changed@example.invalid"})
             self.manager.ensure_valid_token = AsyncMock(return_value=changed)
-            with self.assertRaisesRegex(ProjectControlError, "身份变更"):
+            with self.assertRaisesRegex(ProjectControlError, "changed identity"):
                 await BoundLoadBalancer(self.balancer,self.manager).select_token(for_image_generation=True,model="image")
         finally:
             CURRENT_BINDING.reset(context)
@@ -374,11 +374,11 @@ class ProjectPersistenceTest(unittest.IsolatedAsyncioTestCase):
         context = CURRENT_BINDING.set(row)
         try:
             changes = [
-                ({"image_enabled":False}, {"for_image_generation":True,"model":"image"}, "未启用"),
-                ({"video_enabled":False}, {"for_video_generation":True,"model":"video"}, "未启用"),
-                ({"user_paygate_tier":"PAYGATE_TIER_NOT_PAID"}, {"for_image_generation":True,"model":"image-4k"}, "画质"),
-                ({"is_active":False}, {"for_image_generation":True,"model":"image"}, "停用"),
-                ({"id":self.token.id+1}, {"for_image_generation":True,"model":"image"}, "已变更"),
+                ({"image_enabled":False}, {"for_image_generation":True,"model":"image"}, "generation type disabled"),
+                ({"video_enabled":False}, {"for_video_generation":True,"model":"video"}, "generation type disabled"),
+                ({"user_paygate_tier":"PAYGATE_TIER_NOT_PAID"}, {"for_image_generation":True,"model":"image-4k"}, "quality"),
+                ({"is_active":False}, {"for_image_generation":True,"model":"image"}, "disabled"),
+                ({"id":self.token.id+1}, {"for_image_generation":True,"model":"image"}, "account changed"),
             ]
             for change, options, expected in changes:
                 with self.subTest(change=change):
@@ -404,7 +404,7 @@ class ProjectPersistenceTest(unittest.IsolatedAsyncioTestCase):
                 ({"for_video_generation":True,"model":"video"}, self.balancer.concurrency_manager.can_use_video),
             ]:
                 with self.subTest(options=options):
-                    with self.assertRaisesRegex(ProjectControlError,"并发"):
+                    with self.assertRaisesRegex(ProjectControlError,"concurrency limit"):
                         await BoundLoadBalancer(self.balancer,self.manager).select_token(**options,
                             enforce_concurrency_filter=False,reserve=False,track_pending=True)
                     check.assert_awaited_once_with(self.token.id)
@@ -509,7 +509,7 @@ class ProjectPersistenceTest(unittest.IsolatedAsyncioTestCase):
                 "gflow_instance_id":self.control.instance_id,
             })
         self.assertEqual(len(records),4)
-        self.assertIn("未启用",messages[-1]["error"]["message"])
+        self.assertIn("generation type disabled",messages[-1]["error"]["message"])
         self.assertIsNone(CURRENT_BINDING.get())
 
 class WorkerProjectContextTest(unittest.IsolatedAsyncioTestCase):
@@ -565,14 +565,14 @@ class WorkerProjectContextTest(unittest.IsolatedAsyncioTestCase):
         service = self.worker()
         from project_control import ProjectControlError
         service.project_control.handle = AsyncMock(side_effect=ProjectControlError(
-            "project_binding_conflict","项目绑定冲突",409))
+            "project_binding_conflict","Project binding conflict",409))
         service.project_control.instance_id = "synthetic-instance"
         service.handle_project_control = __import__("worker").GFlowService.handle_project_control.__get__(service)
         await service.handle_chat_completion("conflict",envelope(request("projects.get")))
         receipt = service.send_line.call_args.args[0]
         self.assertNotIn("error",receipt)
         control = json.loads(receipt["result"]["choices"][0]["message"]["content"])
-        self.assertEqual(control["error"],{"code":"project_binding_conflict","message":"项目绑定冲突","status_code":409})
+        self.assertEqual(control["error"],{"code":"project_binding_conflict","message":"Project binding conflict","status_code":409})
 
     async def test_control_validation_and_internal_failures_remain_safe_json(self):
         service = self.worker()

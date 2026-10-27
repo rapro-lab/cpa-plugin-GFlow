@@ -71,7 +71,7 @@ class WorkerAccountsTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_rejected_session_does_not_report_zero_or_overwrite_balance(self):
         service, method = self.make_service(
-            error=RuntimeError("Flow 登录认证失败 (rpc=nzlxg, code=401)"))
+            error=RuntimeError("Flow login authentication failed (rpc=nzlxg, code=401)"))
         service.token_manager._at_validation_cache[1] = time.monotonic() + 300
         result = await method(service, {"token_id": 1})
         self.assertFalse(result["success"])
@@ -123,7 +123,7 @@ class WorkerAccountsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(after["verified_tokens"], 1)
         health = (await service.handle_list_tokens({}))["tokens"][0]["health"]
         self.assertEqual(health["code"], "verified")
-        self.assertIn("验证码", health["detail"])
+        self.assertIn("captcha", health["detail"])
         # 最新网络错误清掉旧成功 TTL，账号仍启用，历史余额也保留。
         service.flow_client.get_credits.side_effect = TimeoutError("synthetic timeout")
         await method(service, {"token_id": 1})

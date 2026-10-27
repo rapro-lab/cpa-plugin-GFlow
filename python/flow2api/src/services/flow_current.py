@@ -586,7 +586,7 @@ class CurrentFlowClientMixin:
                 if is_missing_model and request_model_key != model_keys[-1]:
                     fallback_model_key = model_keys[-1]
                     debug_logger.log_warning(
-                        "[VIDEO] Flow 未找到 relaxed 模型 key，回退同一时长标准 key: "
+                        "[VIDEO] Flow did not find the relaxed model key; falling back to the standard key for the same duration: "
                         f"{request_model_key} -> {model_keys[-1]}"
                     )
                     continue
@@ -800,7 +800,7 @@ class CurrentFlowClientMixin:
             if operation_id and operation_id not in operation_ids:
                 operation_ids.append(operation_id)
         if not operation_ids:
-            raise ValueError("视频状态查询缺少 Flow frontend operation ID")
+            raise ValueError("Video status query is missing the Flow frontend operation ID")
         first_operation = operations[0] if operations else {}
         project_id = str((first_operation or {}).get("projectId") or "").strip()
         payload = await self._current_rpc(

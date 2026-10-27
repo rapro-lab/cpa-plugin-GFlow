@@ -32,13 +32,13 @@ class AccountHealthTests(unittest.TestCase):
         self.assertEqual(value["code"], "unverified")
         self.assertFalse(value["verified"])
         self.assertEqual(value["level"], "warning")
-        self.assertIn("缓存积分", value["detail"])
+        self.assertIn("cached credits", value["detail"])
 
     def test_manual_disable_is_distinct_from_expired_session(self):
         value = self.health(token(is_active=False))
         self.assertEqual(value["code"], "disabled")
         self.assertFalse(value["enabled"])
-        self.assertEqual(value["label"], "已手动停用")
+        self.assertEqual(value["label"], "Manually disabled")
 
     def test_explicit_session_expiry_beats_recent_success(self):
         value = self.health(token(ban_reason="session_expired"), recent_validation_expires=200)
@@ -68,7 +68,7 @@ class AccountHealthTests(unittest.TestCase):
                             recent_validation_expires=101)
         self.assertEqual(value["code"], "verified")
         self.assertTrue(value["verified"])
-        self.assertIn("验证码", value["detail"])
+        self.assertIn("captcha", value["detail"])
 
     def test_expired_validation_cache_never_shows_green(self):
         for expires in (0, 99, 100, None, "not a number"):
@@ -119,7 +119,7 @@ class AccountHealthTests(unittest.TestCase):
 class AccountHealthUITests(unittest.TestCase):
     def test_badges_use_health_evidence_and_escape_details(self):
         node = shutil.which("node")
-        self.assertIsNotNone(node, "需要 Node.js 执行页面逻辑回归")
+        self.assertIsNotNone(node, "Node.js is required for the page logic regression")
         page = (ROOT / "static/manage.html").read_text(encoding="utf-8")
         script = page.split("<script>", 1)[1].split("</script>", 1)[0]
         checks = r"""
@@ -129,21 +129,21 @@ const context = vm.createContext({window:{addEventListener(){}}});
 vm.runInContext(SCRIPT, context);
 let badge = context.accountHealthBadge({is_active:true, credits:1050});
 assert.match(badge,/badge-warning/);
-assert.match(badge,/未校验/);
+assert.match(badge,/not verified/);
 assert.ok(!badge.includes('badge-success'));
 badge = context.accountHealthBadge({is_active:false,ban_reason:'session_expired'});
-assert.match(badge,/登录态失效/);
+assert.match(badge,/Session expired/);
 badge = context.accountHealthBadge({is_active:true,health:{
-  code:'refresh_failed',label:'需重新校验',level:'warning',detail:'<secret>&"'
+  code:'refresh_failed',label:'Re-validation due',level:'warning',detail:'<secret>&"'
 }});
-assert.match(badge,/需重新校验/);
+assert.match(badge,/Re-validation due/);
 assert.ok(!badge.includes('<secret>'));
 assert.ok(badge.includes('&lt;secret&gt;&amp;&quot;'));
 badge = context.accountHealthBadge({is_active:true,health:{
-  code:'verified',label:'登录已验证',level:'success',detail:'近期已校验'
+  code:'verified',label:'Login verified',level:'success',detail:'Recently validated'
 }});
 assert.match(badge,/badge-success/);
-assert.match(badge,/登录已验证/);
+assert.match(badge,/Login verified/);
 console.log('PASS truthful account health badges');
 """
         result = subprocess.run(
@@ -151,7 +151,7 @@ console.log('PASS truthful account health badges');
             capture_output=True, text=True, encoding="utf-8", timeout=20,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("启用账号缓存积分", page)
+        self.assertIn("Cached credits for enabled accounts", page)
         self.assertIn("res.verified_tokens ??", script)
 
 

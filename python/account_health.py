@@ -41,37 +41,37 @@ def account_health(token, *, now=None, recent_validation_expires=0.0,
         }
 
     if ban == "session_expired":
-        return state("session_expired", "登录态失效", "danger",
-                     "Google 已明确拒绝保存的登录态，请通过登录助手重新同步。")
+        return state("session_expired", "Session expired", "danger",
+                     "Google rejected the stored session; re-sync it with the login assistant.")
     if ban:
-        label = "请求限流" if ban == "429_rate_limit" else "账号已禁用"
+        label = "Rate limited" if ban == "429_rate_limit" else "Account disabled"
         return state("rate_limited" if ban == "429_rate_limit" else "blocked",
-                     label, "danger", "后台已禁用此账号，请查看请求错误与禁用原因。")
+                     label, "danger", "The backend disabled this account; check the request error and the disable reason.")
     if not enabled:
-        return state("disabled", "已手动停用", "warning", "账号开关已关闭。")
+        return state("disabled", "Manually disabled", "warning", "The account switch is off.")
 
     # 调用者传入的最新校验失败会覆盖旧 TTL，但不暴露原始错误中的 Cookie/URL。
     if validation_failure:
-        return state("refresh_failed", "需重新校验", "warning",
-                     "最近登录校验或刷新失败；请重试并查看请求错误，尚不能据此判断账号过期。")
+        return state("refresh_failed", "Needs re-validation", "warning",
+                     "The last login check or refresh failed; retry and check the request error. This alone does not prove the account expired.")
     try:
         recently_verified = float(recent_validation_expires or 0) > float(tick)
     except (TypeError, ValueError):
         recently_verified = False
     if recently_verified:
-        return state("verified", "登录已验证", "success",
-                     "最近已通过 Google 登录校验；生成仍取决于额度、验证码与上游响应。", True)
+        return state("verified", "Login verified", "success",
+                     "Recently validated with Google; generation still depends on quota, captcha and the upstream response.", True)
 
     refresh_result = str(_value(token, "last_st_refresh_result", "") or "").strip()
-    if refresh_result and refresh_result.lower() not in {"success", "ok", "成功"}:
-        return state("refresh_failed", "需重新校验", "warning",
-                     "最近登录校验或刷新失败；请重试并查看请求错误，尚不能据此判断账号过期。")
+    if refresh_result and refresh_result.lower() not in {"success", "ok", "Success"}:
+        return state("refresh_failed", "Needs re-validation", "warning",
+                     "The last login check or refresh failed; retry and check the request error. This alone does not prove the account expired.")
     expires = _as_utc(_value(token, "at_expires"))
     if expires and expires <= now:
-        return state("verification_due", "待重新校验", "warning",
-                     "已到登录态重新校验时间；尚未确认失效，缓存积分不代表可用。")
-    return state("unverified", "已启用 · 未校验", "warning",
-                 "账号已启用，但当前没有近期校验成功记录；缓存积分不代表可用。")
+        return state("verification_due", "Re-validation due", "warning",
+                     "The session is due for re-validation; it is not confirmed expired and cached credits do not mean it is usable.")
+    return state("unverified", "Enabled · not verified", "warning",
+                 "The account is enabled but has no recent successful validation; cached credits do not mean it is usable.")
 
 
 def summarize_account_health(tokens, health_by_id=None):

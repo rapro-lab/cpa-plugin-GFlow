@@ -211,13 +211,13 @@ def resolve_model_name(model: str, request=None, model_config=None, images=None)
 
         if model_config and resolved in model_config:
             debug_logger.log_info(
-                f"[MODEL_RESOLVER] 视频模型自动调配: {model} -> {resolved} "
+                f"[MODEL_RESOLVER] video model auto-mapped: {model} -> {resolved} "
                 f"(duration={duration}s, aspect={aspect_ratio}, has_images={has_images})"
             )
             return resolved
 
         debug_logger.log_warning(
-            f"[MODEL_RESOLVER] 视频模型 {model} 调配失败 (target={resolved})，使用原始模型名"
+            f"[MODEL_RESOLVER] video model {model} mapping failed (target={resolved}), using the original model name"
         )
         return model
     return _resolve_upstream_model(

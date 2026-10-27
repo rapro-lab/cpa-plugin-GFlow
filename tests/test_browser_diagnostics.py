@@ -33,7 +33,7 @@ class BrowserDiagnosticTests(unittest.IsolatedAsyncioTestCase):
             result = diagnose_browser_error({**GENERIC_ERROR, "traceback": SECRET_ERROR, "url": SECRET_ERROR})
             self.assertEqual(result["browser_stage"], "browser_startup")
             self.assertEqual(result["browser_reason"], "timeout")
-            self.assertIn("浏览器启动", result["message"])
+            self.assertIn("Browser startup", result["message"])
             self.assertNotIn("PRIVATE", json.dumps(result))
             self.assertNotIn("example.invalid", json.dumps(result))
             self.assertEqual(result["status_code"], 500)
@@ -106,7 +106,7 @@ class BrowserDiagnosticTests(unittest.IsolatedAsyncioTestCase):
                 self.assertNotIn("PRIVATE", json.dumps(result))
         with browser_diagnostic_scope():
             result = diagnose_browser_error(GENERIC_ERROR)
-            self.assertIn("没有更具体", result["message"])
+            self.assertIn("no more specific", result["message"])
 
     async def test_unrelated_generation_errors_are_unchanged(self):
         error = {"message": "insufficient quota", "code": "insufficient_quota", "status_code": 402}

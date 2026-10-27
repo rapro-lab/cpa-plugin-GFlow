@@ -41,8 +41,8 @@ class Config:
 
         if config_path.exists() and not config_path.is_file():
             print(
-                f"[Config] 检测到 {config_path} 不是普通文件，"
-                f"将回退到 {fallback_path.name}。请检查 Docker 挂载或本地配置路径。"
+                f"[Config] Detected {config_path} is not a regular file;"
+                f" falling back to {fallback_path.name}. Check the Docker mount or the local config path."
             )
             config_path = fallback_path
         elif not config_path.exists():
@@ -50,8 +50,8 @@ class Config:
 
         if not config_path.is_file():
             raise FileNotFoundError(
-                f"配置文件不存在或不可读取: {config_path}. "
-                f"请确认 config 目录下存在可用的 setting.toml 或 setting_example.toml"
+                f"Config file is missing or unreadable: {config_path}. "
+                f"Make sure the config directory contains a usable setting.toml or setting_example.toml"
             )
 
         with open(config_path, "rb") as f:

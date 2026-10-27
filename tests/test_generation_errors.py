@@ -28,7 +28,7 @@ class ErrorTests(unittest.TestCase):
         error = generation_error({"error": {"message": "PUBLIC_ERROR_UNUSUAL_ACTIVITY"}})
         self.assertEqual(error["code"], "gflow_unusual_activity")
         self.assertEqual(error["status_code"], 403)
-        self.assertIn("未自动重试", error["message"])
+        self.assertIn("not retried", error["message"])
 
     def test_empty_disabled_and_expired_accounts_are_distinct(self):
         self.assertEqual(account_pool_error([])["code"], "gflow_empty_account_pool")

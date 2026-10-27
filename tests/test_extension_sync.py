@@ -40,7 +40,7 @@ class ExtensionSyncTest(IsolatedAsyncioTestCase):
 
     async def test_cookie_must_be_validated_before_database_write(self):
         self.service.flow_client.st_to_at.side_effect = RuntimeError("upstream error with sensitive details")
-        with self.assertRaisesRegex(ValueError, "登录态验证失败") as raised:
+        with self.assertRaisesRegex(ValueError, "Google session validation failed") as raised:
             await sync_extension_account(self.service, self.payload)
         self.assertNotIn("sensitive", str(raised.exception))
         self.service.db.update_token.assert_not_awaited()
@@ -48,13 +48,13 @@ class ExtensionSyncTest(IsolatedAsyncioTestCase):
 
     async def test_reported_identity_mismatch_rejected(self):
         self.service.flow_client.st_to_at.return_value = {"access_token": "fake", "user": {"email": "another@example.test"}}
-        with self.assertRaisesRegex(ValueError, "不一致"):
+        with self.assertRaisesRegex(ValueError, "does not match the Google account"):
             await sync_extension_account(self.service, self.payload)
         self.service.db.update_token.assert_not_awaited()
 
     async def test_auth_error_has_actionable_code_and_no_raw_credentials(self):
         self.service.flow_client.st_to_at.side_effect = RuntimeError(
-            "Flow 登录认证失败 (rpc=nzlxg, code=401) Cookie=DO_NOT_ECHO"
+            "Flow login authentication failed (rpc=nzlxg, code=401) Cookie=DO_NOT_ECHO"
         )
         with self.assertRaises(ExtensionSyncError) as raised:
             await sync_extension_account(self.service, self.payload)
@@ -62,7 +62,7 @@ class ExtensionSyncTest(IsolatedAsyncioTestCase):
         self.assertEqual(result["error"]["code"], "gflow_google_auth_rejected")
         self.assertEqual(result["status_code"], 422)
         self.assertEqual(result["error"]["diagnostic"], {"phase":"rpc", "rpc":"nzlxg", "rpc_code":401})
-        self.assertIn("同一浏览器", result["error"]["message"])
+        self.assertIn("same browser", result["error"]["message"])
         self.assertNotIn("DO_NOT_ECHO", str(result))
         self.service.token_manager.add_token.assert_not_awaited()
 
@@ -95,14 +95,14 @@ class ExtensionSyncTest(IsolatedAsyncioTestCase):
         self.payload["user_agent"] = "Mozilla/5.0 Chrome/154.0.0.0"
         def validate(*args, **kwargs):
             self.assertEqual(client._set_request_fingerprint.call_args.args[0]["user_agent"], self.payload["user_agent"])
-            raise RuntimeError("Flow 登录认证失败 (rpc=nzlxg, code=401)")
+            raise RuntimeError("Flow login authentication failed (rpc=nzlxg, code=401)")
         client.st_to_at.side_effect = validate
         with self.assertRaises(ExtensionSyncError):
             await sync_extension_account(self.service, self.payload)
         self.assertEqual(client._set_request_fingerprint.call_args.args[0], {"accept_language":"zh-CN"})
 
     async def test_bootstrap_diagnostics_never_return_raw_response(self):
-        error = RuntimeError("Flow 登录认证失败: Cookie=DO_NOT_ECHO")
+        error = RuntimeError("Flow login authentication failed: Cookie=DO_NOT_ECHO")
         error.gflow_diagnostic = {"phase":"bootstrap", "http_status":200, "reason":"redirect"}
         result = classify_sync_failure(error).result()
         self.assertEqual(result["error"]["diagnostic"], {"phase":"bootstrap", "http_status":200,"reason":"redirect"})
@@ -114,7 +114,7 @@ class ExtensionSyncTest(IsolatedAsyncioTestCase):
             "success":True,"google_cookies":fresh,"session_token":"frontend-refreshed",
         })
         self.service.flow_client.st_to_at.side_effect = [
-            RuntimeError("Flow 登录认证失败 (rpc=nzlxg, code=401)"),
+            RuntimeError("Flow login authentication failed (rpc=nzlxg, code=401)"),
             {"access_token":"validated", "user":{}, "credits":12},
         ]
         result = await sync_extension_account(self.service,self.payload)
@@ -125,9 +125,9 @@ class ExtensionSyncTest(IsolatedAsyncioTestCase):
 
     async def test_cookie_refresh_without_identity_cannot_save_or_report_success(self):
         self.service.refresh_extension_login = AsyncMock(return_value={
-            "success":False,"error":"Flow 页面未返回已登录账号 Cookie=DO_NOT_ECHO",
+            "success":False,"reason":"missing_identity","error":"Flow page did not return a signed-in account Cookie=DO_NOT_ECHO",
         })
-        self.service.flow_client.st_to_at.side_effect = RuntimeError("Flow 登录认证失败 (rpc=nzlxg, code=401)")
+        self.service.flow_client.st_to_at.side_effect = RuntimeError("Flow login authentication failed (rpc=nzlxg, code=401)")
         with self.assertRaises(ExtensionSyncError) as raised:
             await sync_extension_account(self.service,self.payload)
         self.assertEqual(raised.exception.diagnostic["cookie_refresh"],"missing_identity")
@@ -137,13 +137,13 @@ class ExtensionSyncTest(IsolatedAsyncioTestCase):
 
     async def test_browser_credit_success_never_skips_backend_validation(self):
         self.payload.update(browser_check={"success":True,"http_status":200,"rpc_code":401,"secret":"DO_NOT_ECHO"},cookie_source="browser_request")
-        self.service.flow_client.st_to_at.side_effect=RuntimeError("Flow 登录认证失败 (rpc=nzlxg, code=401)")
+        self.service.flow_client.st_to_at.side_effect=RuntimeError("Flow login authentication failed (rpc=nzlxg, code=401)")
         with self.assertRaises(ExtensionSyncError) as raised:
             await sync_extension_account(self.service,self.payload)
         result=raised.exception.result()
         self.assertTrue(result["error"]["diagnostic"]["browser_credit_ok"])
         self.assertTrue(result["error"]["diagnostic"]["observed_cookie_header"])
-        self.assertIn("浏览器额度查询成功",result["error"]["message"])
+        self.assertIn("browser read the quota",result["error"]["message"])
         self.assertNotIn("DO_NOT_ECHO",str(result))
         self.service.token_manager.add_token.assert_not_awaited()
 

@@ -29,7 +29,7 @@ class ExtensionPipelineTest(IsolatedAsyncioTestCase):
                 "credits": 12,
                 "user": {"email": "example@example.test"},
             }),
-            get_credits=AsyncMock(side_effect=AssertionError("验证已包含额度，不应重复查询")),
+            get_credits=AsyncMock(side_effect=AssertionError("the verification already carries credits; it must not query again")),
             create_project=AsyncMock(return_value="11111111-1111-1111-1111-111111111111"),
         )
         self.manager = TokenManager(self.db, self.client)

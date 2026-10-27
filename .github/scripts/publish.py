@@ -9,9 +9,9 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 # Must stay in sync with the build matrix in .github/workflows/build.yml.
-# Linux targets are intentionally not built.
-PLATFORMS = (("darwin", "amd64", "dylib"), ("darwin", "arm64", "dylib"),
-             ("windows", "amd64", "dll"))
+# Linux and macOS targets are intentionally not built: this fork is published
+# for Windows only, and a release must never wait on a platform nobody uses.
+PLATFORMS = (("windows", "amd64", "dll"),)
 
 
 def gh(arguments, check=True):

@@ -19,7 +19,7 @@ Security hardening, full English localization and a smaller, cheaper CI. The mod
 ## CI and build
 
 - A `test` job now runs on every push and pull request (worker suite, pinned upstream contract, `cargo test`); workers are only frozen on release tags or manual runs.
-- Linux targets are no longer built. Releases cover darwin amd64/arm64 and windows amd64.
+- Linux and macOS targets are no longer built. Releases cover windows amd64 only; upstream keeps publishing darwin and Linux builds.
 - `requirements-dev.txt` records the build and test dependencies.
 - The frozen worker no longer carries the browser dashboard router. An optional `build.py --lean` (`GFLOW_LEAN=1`) also drops playwright, taking the Windows worker from 64.2 MB to 24.8 MB; that variant cannot use the `browser` captcha method.
 
